@@ -1,6 +1,6 @@
 import { Scenario } from "@/types/tactical";
 import { Button } from "@/components/ui/button";
-import { Play, Square, Plus } from "lucide-react";
+import { Square, Plus, Brain } from "lucide-react";
 
 interface Props {
   scenarios: Scenario[];
@@ -8,10 +8,11 @@ interface Props {
   onActivate: (id: string) => void;
   onStop: () => void;
   onAddContact: () => void;
+  onClassifyAll: () => void;
   running: boolean;
 }
 
-export function ScenarioBar({ scenarios, activeId, onActivate, onStop, onAddContact, running }: Props) {
+export function ScenarioBar({ scenarios, activeId, onActivate, onStop, onAddContact, onClassifyAll, running }: Props) {
   return (
     <div className="hud-panel p-3 flex flex-wrap items-center gap-2">
       <span className="hud-label mr-2">Escenarios</span>
@@ -34,6 +35,9 @@ export function ScenarioBar({ scenarios, activeId, onActivate, onStop, onAddCont
       <div className="ml-auto flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={onAddContact} disabled={!activeId} className="font-mono uppercase">
           <Plus className="w-3 h-3 mr-1" /> Contacto
+        </Button>
+        <Button variant="outline" size="sm" onClick={onClassifyAll} disabled={!activeId} className="font-mono uppercase border-accent/60 text-accent hover:bg-accent/10">
+          <Brain className="w-3 h-3 mr-1" /> IA Auto
         </Button>
         {running ? (
           <Button variant="destructive" size="sm" onClick={onStop} className="font-mono uppercase">
