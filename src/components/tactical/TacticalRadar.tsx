@@ -210,8 +210,9 @@ export function TacticalRadar({
 
           {/* Contacts */}
           {filtered.map((c) => {
-            const cr = (c.range_nm ?? 0) * scale;
-            if (cr > 198) return null; // off-scope
+            const rawCr = (c.range_nm ?? 0) * scale;
+            const offScope = rawCr > 195;
+            const cr = Math.min(rawCr, 195);
             const a = ((c.bearing ?? 0) * Math.PI) / 180;
             const x = 200 + cr * Math.sin(a);
             const y = 200 - cr * Math.cos(a);
