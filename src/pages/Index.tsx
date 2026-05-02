@@ -299,7 +299,28 @@ const Index = () => {
     }
   };
 
-  const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
+  const toggleSensor = (id: string) => {
+    setSensors((ss) => ss.map((s) => {
+      if (s.id !== id) return s;
+      const next = s.status === "online" ? "standby" : s.status === "standby" ? "online" : s.status;
+      return { ...s, status: next };
+    }));
+  };
+
+  const setAlertLevel = async (lvl: ShipSystem["alert_level"]) => {
+    setShip((s) => ({ ...s, alert_level: lvl, cms_status: lvl === "red" ? "battle" : lvl === "yellow" ? "degraded" : "nominal" }));
+    if (activeScenario) {
+      await supabase.from("tactical_events").insert({
+        scenario_id: activeScenario,
+        event_type: "battle_stations",
+        domain: "mixed",
+        severity: lvl === "red" ? "critical" : "info",
+        message: `BATTLE STATIONS · CONDICIÓN ${lvl === "white" ? "III" : lvl === "yellow" ? "II" : "I"}`,
+      });
+    }
+    toast[lvl === "red" ? "error" : "success"](`Condición de alerta ${lvl.toUpperCase()}`);
+  };
+
   const filteredContacts = tab === "ALL" ? contacts : contacts.filter((c) => c.domain === tab);
 
   const now = new Date().toLocaleTimeString("es-CO", { hour12: false });
