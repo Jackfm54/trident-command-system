@@ -321,6 +321,9 @@ const Index = () => {
     toast[lvl === "red" ? "error" : "success"](`Condición de alerta ${lvl.toUpperCase()}`);
   };
 
+  const [radarRange, setRadarRange] = useState<number>(40);
+  const [showWeaponRings, setShowWeaponRings] = useState(true);
+
   const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
   const filteredContacts = tab === "ALL" ? contacts : contacts.filter((c) => c.domain === tab);
 
@@ -390,9 +393,26 @@ const Index = () => {
 
               {TAB_DOMAINS.map((t) => (
                 <TabsContent key={t.key} value={t.key} className="mt-3">
-                  <div>
+                  <div className="space-y-3">
+                    {/* Radar centered & large */}
+                    <div className="flex justify-center">
+                      <div className="w-full max-w-[820px]">
+                        <TacticalRadar
+                          contacts={contacts}
+                          filterDomain={t.key === "ALL" ? "all" : t.key}
+                          selectedId={selectedId}
+                          onSelect={setSelectedId}
+                          rangeNm={radarRange}
+                          onRangeChange={setRadarRange}
+                          weapons={weapons}
+                          showWeaponRings={showWeaponRings}
+                          onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
+                        />
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-                      <div className="xl:col-span-5">
+                      <div className="xl:col-span-4">
                         <ContactList
                           contacts={filteredContacts}
                           selectedId={selectedId}
@@ -401,17 +421,7 @@ const Index = () => {
                           classifyingId={classifyingId}
                         />
                       </div>
-                      <div className="xl:col-span-7">
-                        <TacticalRadar
-                          contacts={contacts}
-                          filterDomain={t.key === "ALL" ? "all" : t.key}
-                          selectedId={selectedId}
-                          onSelect={setSelectedId}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 mt-3">
-                      <div className="xl:col-span-5">
+                      <div className="xl:col-span-4">
                         <ContactDetail
                           contact={selected}
                           onEngage={openEngage}
@@ -421,7 +431,7 @@ const Index = () => {
                           classifying={classifyingId === selected?.id}
                         />
                       </div>
-                      <div className="xl:col-span-7">
+                      <div className="xl:col-span-4">
                         <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
                       </div>
                     </div>
