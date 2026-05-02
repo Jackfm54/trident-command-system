@@ -38,6 +38,7 @@ const Index = () => {
   const [ship, setShip] = useState<ShipSystem>(INITIAL_SHIP);
   const [engageOpen, setEngageOpen] = useState(false);
   const [engageContact, setEngageContact] = useState<Contact | null>(null);
+  const simRef = useRef<number | null>(null);
 
   // Load scenarios once
   useEffect(() => {
@@ -198,30 +199,54 @@ const Index = () => {
     }
   };
 
-  const engage = async (c: Contact) => {
+  const openEngage = (c: Contact) => {
+    setEngageContact(c);
+    setEngageOpen(true);
+  };
+
+  const fireWeapon = async (w: Weapon, c: Contact) => {
+    setEngageOpen(false);
+    // decrement ammo
+    setWeapons((ws) => ws.map((x) => (x.id === w.id ? { ...x, ammo: Math.max(0, x.ammo - (w.type === "ciws" ? 100 : w.type === "gun" ? 8 : 1)) } : x)));
     await supabase.from("contacts").update({ status: "engaged" }).eq("id", c.id);
+    const tof = ((c.range_nm ?? 0) / Math.max(1, w.speed_kts)) * 3600;
     await supabase.from("tactical_events").insert({
       scenario_id: c.scenario_id,
       contact_id: c.id,
       event_type: "engagement",
       domain: c.domain,
       severity: "critical",
-      message: `WEAPONS RELEASE sobre ${c.track_id} (${c.platform_type ?? "unknown"})`,
+      message: `🔥 WEAPONS RELEASE · ${w.acronym} → ${c.track_id} · ToF ${tof.toFixed(1)}s · pk ${Math.round(w.pk * 100)}%`,
     });
-    toast.error(`Engaged ${c.track_id}`);
-    // Remove neutralized contact after short delay
+    toast.error(`${w.acronym} fired @ ${c.track_id}`);
+
     setTimeout(async () => {
-      await supabase.from("contacts").delete().eq("id", c.id);
-      await supabase.from("tactical_events").insert({
-        scenario_id: c.scenario_id,
-        contact_id: null,
-        event_type: "engagement",
-        domain: c.domain,
-        severity: "info",
-        message: `${c.track_id} neutralizado · splash`,
-      });
-      setSelectedId((s) => (s === c.id ? null : s));
-    }, 1500);
+      const hit = Math.random() < w.pk;
+      if (hit) {
+        await supabase.from("contacts").delete().eq("id", c.id);
+        await supabase.from("tactical_events").insert({
+          scenario_id: c.scenario_id,
+          contact_id: null,
+          event_type: "splash",
+          domain: c.domain,
+          severity: "info",
+          message: `💥 SPLASH · ${c.track_id} destruido por ${w.acronym}`,
+        });
+        toast.success(`Splash ${c.track_id}`);
+        setSelectedId((s) => (s === c.id ? null : s));
+      } else {
+        await supabase.from("contacts").update({ status: "tracking" }).eq("id", c.id);
+        await supabase.from("tactical_events").insert({
+          scenario_id: c.scenario_id,
+          contact_id: c.id,
+          event_type: "miss",
+          domain: c.domain,
+          severity: "warning",
+          message: `⚠ MISS · ${w.acronym} falló contra ${c.track_id}`,
+        });
+        toast.warning(`Miss ${c.track_id} · reattack`);
+      }
+    }, Math.min(4000, Math.max(800, tof * 100)));
   };
 
   const shadow = async (c: Contact) => {
