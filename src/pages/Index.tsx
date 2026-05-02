@@ -321,6 +321,7 @@ const Index = () => {
     toast[lvl === "red" ? "error" : "success"](`Condición de alerta ${lvl.toUpperCase()}`);
   };
 
+  const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
   const filteredContacts = tab === "ALL" ? contacts : contacts.filter((c) => c.domain === tab);
 
   const now = new Date().toLocaleTimeString("es-CO", { hour12: false });
