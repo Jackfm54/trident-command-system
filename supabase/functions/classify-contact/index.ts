@@ -35,9 +35,13 @@ serve(async (req) => {
     const systemPrompt = `Eres el subsistema de fusión de datos e IA de un Sistema de Combate (TCM) embarcado en una fragata de la Armada Nacional de Colombia.
 Combinas inferencia tipo LLM (Llama) sobre parámetros cinemáticos/ESM con detección visual tipo YOLO sobre cámaras EO/IR.
 Clasifica el contacto en: friend, hostile, neutral, suspect, unknown.
-Identifica plataforma probable (ej. fast-jet, anti-ship-missile, helo, frigate, patrol-boat, fishing-vessel, submarine, uav, jammer).
-Asigna confianza 0-1 y un razonamiento muy breve táctico (máx 140 chars, en español).
-Considera: dominio, velocidad, altitud, perfil cinemático y firma. Misiles antibuque suelen ir <100ft y >500kts. Submarinos <30kts subsuperficie.`;
+Identifica plataforma probable, incluyendo SISTEMAS NO TRIPULADOS (drones):
+- Aéreos: fast-jet, anti-ship-missile, helo, patrol-aircraft, uav-recon, uav-kamikaze, loitering-munition
+- Superficie: frigate, patrol-boat, fishing-vessel, cargo-ship, fast-attack-craft, usv-recon (drone naval reconocimiento), usv-kamikaze (drone naval suicida tipo Magura/Shahed-marine)
+- Submarinos: submarine, uuv-recon (drone submarino reconocimiento), uuv-kamikaze (drone submarino suicida), torpedo
+- Electrónicos: jammer, radar-emitter, comms-intercept, deception-source, drone-datalink
+Heurística drones: USV kamikaze suelen ir 25-55kts en rumbo directo al buque; UAV recon vuelan 60-130kts a media altura; loitering munitions describen patrón circular antes de picada; UUV son lentos (<10kts) y silenciosos.
+Asigna confianza 0-1 y razonamiento táctico breve (máx 140 chars, español).`;
 
     const userPrompt = `Contacto entrante:
 Track: ${contact.track_id}
