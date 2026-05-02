@@ -1,110 +1,252 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Contact, Domain, CLASSIFICATION_META } from "@/types/tactical";
+import { Weapon } from "@/lib/combatSystems";
+import { Button } from "@/components/ui/button";
+import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 
 interface Props {
   contacts: Contact[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   filterDomain?: Domain | "all";
+  rangeNm: number;
+  onRangeChange: (r: number) => void;
+  weapons?: Weapon[];
+  showWeaponRings?: boolean;
+  onToggleWeaponRings?: () => void;
 }
 
-export function TacticalRadar({ contacts, selectedId, onSelect, filterDomain = "all" }: Props) {
+const RANGE_PRESETS = [5, 10, 20, 40, 80, 160];
+
+const WEAPON_RING_COLOR: Record<Domain, string> = {
+  air: "var(--domain-air)",
+  surface: "var(--domain-surface)",
+  subsurface: "var(--domain-subsurface)",
+  electronic: "var(--domain-electronic)",
+};
+
+export function TacticalRadar({
+  contacts,
+  selectedId,
+  onSelect,
+  filterDomain = "all",
+  rangeNm,
+  onRangeChange,
+  weapons = [],
+  showWeaponRings = true,
+  onToggleWeaponRings,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   const filtered = contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain);
+  const scale = 195 / rangeNm; // px per nm
+
+  const ringStep = rangeNm / 4;
+  const rings = [1, 2, 3, 4].map((i) => ({ nm: ringStep * i, r: scale * ringStep * i }));
+
+  const visibleWeapons = weapons.filter((w) => {
+    if (!showWeaponRings) return false;
+    if (filterDomain !== "all" && w.domain !== filterDomain) return false;
+    if (w.type === "decoy") return false;
+    return w.ammo > 0;
+  });
+
+  const zoomIn = () => {
+    const idx = RANGE_PRESETS.findIndex((r) => r >= rangeNm);
+    const nextIdx = Math.max(0, idx - 1);
+    onRangeChange(RANGE_PRESETS[nextIdx]);
+  };
+  const zoomOut = () => {
+    const idx = RANGE_PRESETS.findIndex((r) => r >= rangeNm);
+    const nextIdx = Math.min(RANGE_PRESETS.length - 1, idx < 0 ? RANGE_PRESETS.length - 1 : idx + 1);
+    onRangeChange(RANGE_PRESETS[nextIdx]);
+  };
 
   return (
-    <div ref={ref} className="hud-panel relative aspect-square w-full max-w-[640px] mx-auto bg-gradient-hud overflow-hidden">
-      {/* Range rings */}
-      <svg viewBox="0 0 400 400" className="absolute inset-0 w-full h-full">
-        <defs>
-          <radialGradient id="ringGrad">
-            <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.05" />
-            <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.2" />
-          </radialGradient>
-        </defs>
-        {[50, 100, 150, 195].map((r) => (
-          <circle key={r} cx="200" cy="200" r={r} fill="none" stroke="hsl(var(--accent))" strokeOpacity="0.25" strokeWidth="0.5" />
-        ))}
-        {[0, 45, 90, 135].map((a) => (
-          <line
-            key={a}
-            x1="200" y1="200"
-            x2={200 + 195 * Math.sin((a * Math.PI) / 180)}
-            y2={200 - 195 * Math.cos((a * Math.PI) / 180)}
-            stroke="hsl(var(--accent))" strokeOpacity="0.2" strokeWidth="0.5"
-          />
-        ))}
-        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
-          <text
-            key={a}
-            x={200 + 205 * Math.sin((a * Math.PI) / 180)}
-            y={200 - 205 * Math.cos((a * Math.PI) / 180)}
-            fill="hsl(var(--accent))"
-            fontSize="9"
-            fontFamily="JetBrains Mono"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            opacity="0.7"
-          >
-            {String(a).padStart(3, "0")}
-          </text>
-        ))}
-        {[10, 20, 30, 40].map((nm, i) => (
-          <text key={nm} x="202" y={200 - (i + 1) * 50 + 3} fill="hsl(var(--accent))" fontSize="8" fontFamily="JetBrains Mono" opacity="0.5">
-            {nm}nm
-          </text>
-        ))}
-
-        {/* Sweep */}
-        <g style={{ transformOrigin: "200px 200px", animation: "radar-sweep 6s linear infinite" }}>
-          <path d="M 200 200 L 200 5 A 195 195 0 0 1 333 95 Z" fill="url(#ringGrad)" opacity="0.6" />
-        </g>
-
-        {/* Own ship */}
-        <g>
-          <circle cx="200" cy="200" r="5" fill="hsl(var(--threat-friend))" />
-          <circle cx="200" cy="200" r="9" fill="none" stroke="hsl(var(--threat-friend))" strokeWidth="1" />
-          <text x="208" y="204" fill="hsl(var(--threat-friend))" fontSize="9" fontFamily="JetBrains Mono">ARC-FRIGATE</text>
-        </g>
-
-        {/* Contacts */}
-        {filtered.map((c) => {
-          const r = Math.min((c.range_nm ?? 0) * 4.5, 195);
-          const a = ((c.bearing ?? 0) * Math.PI) / 180;
-          const x = 200 + r * Math.sin(a);
-          const y = 200 - r * Math.cos(a);
-          const meta = CLASSIFICATION_META[c.classification];
-          const selected = c.id === selectedId;
-          const color = `hsl(var(--${meta.color}))`;
-          return (
-            <g key={c.id} onClick={() => onSelect?.(c.id)} style={{ cursor: "pointer" }}>
-              {selected && <circle cx={x} cy={y} r="14" fill="none" stroke={color} strokeWidth="1" opacity="0.6" />}
-              <text
-                x={x} y={y + 4}
-                fill={color}
-                fontSize={c.classification === "hostile" ? 18 : 14}
-                fontFamily="JetBrains Mono"
-                fontWeight="bold"
-                textAnchor="middle"
-                style={c.classification === "hostile" ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
-                className={c.classification === "hostile" ? "animate-pulse-threat" : ""}
+    <div className="space-y-2">
+      {/* Controls */}
+      <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="hud-label">RANGE</span>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" className="h-7 w-7" onClick={zoomIn} title="Zoom in / acercar">
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
+            <span className="font-mono text-sm text-primary glow-amber tabular-nums w-16 text-center">
+              {rangeNm} NM
+            </span>
+            <Button size="icon" variant="outline" className="h-7 w-7" onClick={zoomOut} title="Zoom out / alejar">
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-1 ml-2">
+            {RANGE_PRESETS.map((r) => (
+              <button
+                key={r}
+                onClick={() => onRangeChange(r)}
+                className={`px-1.5 py-0.5 text-[10px] font-mono rounded border ${
+                  r === rangeNm
+                    ? "bg-primary text-primary-foreground border-primary shadow-glow-amber"
+                    : "border-border text-muted-foreground hover:text-accent hover:border-accent"
+                }`}
               >
-                {meta.symbol}
-              </text>
-              <text x={x + 10} y={y - 4} fill={color} fontSize="7" fontFamily="JetBrains Mono" opacity="0.85">
-                {c.track_id}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant={showWeaponRings ? "default" : "outline"}
+          onClick={onToggleWeaponRings}
+          className="h-7 text-[10px] font-mono uppercase tracking-wider"
+        >
+          <Maximize2 className="h-3 w-3 mr-1" />
+          Coberturas {showWeaponRings ? "ON" : "OFF"}
+        </Button>
+      </div>
 
-      {/* HUD overlay corners */}
-      <div className="absolute top-2 left-3 hud-label">PPI · ARC-FRIGATA</div>
-      <div className="absolute top-2 right-3 hud-label glow-cyan">RNG 40NM</div>
-      <div className="absolute bottom-2 left-3 hud-label">CONTACTS: <span className="hud-value text-primary">{filtered.length}</span></div>
-      <div className="absolute bottom-2 right-3 hud-label">MODE: <span className="text-primary">AUTO</span></div>
+      <div ref={ref} className="hud-panel relative aspect-square w-full max-w-[820px] mx-auto bg-gradient-hud overflow-hidden">
+        <svg viewBox="0 0 400 400" className="absolute inset-0 w-full h-full">
+          <defs>
+            <radialGradient id="ringGrad">
+              <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.2" />
+            </radialGradient>
+          </defs>
+
+          {/* Range rings */}
+          {rings.map((ring) => (
+            <circle
+              key={ring.nm}
+              cx="200" cy="200" r={ring.r}
+              fill="none" stroke="hsl(var(--accent))" strokeOpacity="0.25" strokeWidth="0.5"
+            />
+          ))}
+          {[0, 45, 90, 135].map((a) => (
+            <line
+              key={a}
+              x1="200" y1="200"
+              x2={200 + 195 * Math.sin((a * Math.PI) / 180)}
+              y2={200 - 195 * Math.cos((a * Math.PI) / 180)}
+              stroke="hsl(var(--accent))" strokeOpacity="0.2" strokeWidth="0.5"
+            />
+          ))}
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <text
+              key={a}
+              x={200 + 205 * Math.sin((a * Math.PI) / 180)}
+              y={200 - 205 * Math.cos((a * Math.PI) / 180)}
+              fill="hsl(var(--accent))"
+              fontSize="9"
+              fontFamily="JetBrains Mono"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              opacity="0.7"
+            >
+              {String(a).padStart(3, "0")}
+            </text>
+          ))}
+          {rings.map((ring) => (
+            <text
+              key={`lbl-${ring.nm}`}
+              x="202"
+              y={200 - ring.r + 3}
+              fill="hsl(var(--accent))"
+              fontSize="8"
+              fontFamily="JetBrains Mono"
+              opacity="0.55"
+            >
+              {ring.nm.toFixed(ring.nm < 10 ? 1 : 0)}nm
+            </text>
+          ))}
+
+          {/* Weapon coverage rings */}
+          {visibleWeapons.map((w, i) => {
+            const wr = Math.min(w.range_nm * scale, 360);
+            if (wr < 4) return null;
+            const color = `hsl(${WEAPON_RING_COLOR[w.domain]})`;
+            const dash = w.type === "ciws" || w.type === "gun" ? "2 3" : w.type === "torpedo" ? "5 4" : "8 4";
+            // distribute labels along bearings
+            const bearing = (i * 37) % 360;
+            const lblX = 200 + (wr - 8) * Math.sin((bearing * Math.PI) / 180);
+            const lblY = 200 - (wr - 8) * Math.cos((bearing * Math.PI) / 180);
+            return (
+              <g key={w.id} opacity="0.55">
+                <circle
+                  cx="200" cy="200" r={wr}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="0.7"
+                  strokeDasharray={dash}
+                />
+                <text
+                  x={lblX}
+                  y={lblY}
+                  fill={color}
+                  fontSize="7.5"
+                  fontFamily="JetBrains Mono"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                >
+                  {w.acronym} {w.range_nm}nm
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Sweep */}
+          <g style={{ transformOrigin: "200px 200px", animation: "radar-sweep 6s linear infinite" }}>
+            <path d="M 200 200 L 200 5 A 195 195 0 0 1 333 95 Z" fill="url(#ringGrad)" opacity="0.6" />
+          </g>
+
+          {/* Own ship */}
+          <g>
+            <circle cx="200" cy="200" r="5" fill="hsl(var(--threat-friend))" />
+            <circle cx="200" cy="200" r="9" fill="none" stroke="hsl(var(--threat-friend))" strokeWidth="1" />
+            <text x="208" y="204" fill="hsl(var(--threat-friend))" fontSize="9" fontFamily="JetBrains Mono">ARC-FRIGATE</text>
+          </g>
+
+          {/* Contacts */}
+          {filtered.map((c) => {
+            const cr = (c.range_nm ?? 0) * scale;
+            if (cr > 198) return null; // off-scope
+            const a = ((c.bearing ?? 0) * Math.PI) / 180;
+            const x = 200 + cr * Math.sin(a);
+            const y = 200 - cr * Math.cos(a);
+            const meta = CLASSIFICATION_META[c.classification];
+            const selected = c.id === selectedId;
+            const color = `hsl(var(--${meta.color}))`;
+            return (
+              <g key={c.id} onClick={() => onSelect?.(c.id)} style={{ cursor: "pointer" }}>
+                {selected && <circle cx={x} cy={y} r="14" fill="none" stroke={color} strokeWidth="1" opacity="0.6" />}
+                <text
+                  x={x} y={y + 4}
+                  fill={color}
+                  fontSize={c.classification === "hostile" ? 18 : 14}
+                  fontFamily="JetBrains Mono"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  style={c.classification === "hostile" ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
+                  className={c.classification === "hostile" ? "animate-pulse-threat" : ""}
+                >
+                  {meta.symbol}
+                </text>
+                <text x={x + 10} y={y - 4} fill={color} fontSize="7" fontFamily="JetBrains Mono" opacity="0.85">
+                  {c.track_id}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* HUD overlay corners */}
+        <div className="absolute top-2 left-3 hud-label">PPI · ARC-FRIGATA</div>
+        <div className="absolute top-2 right-3 hud-label glow-cyan">RNG {rangeNm}NM</div>
+        <div className="absolute bottom-2 left-3 hud-label">CONTACTS: <span className="hud-value text-primary">{filtered.length}</span></div>
+        <div className="absolute bottom-2 right-3 hud-label">MODE: <span className="text-primary">AUTO</span></div>
+      </div>
     </div>
   );
 }
