@@ -122,15 +122,26 @@ export function TacticalRadar({
             ))}
           </div>
         </div>
-        <Button
-          size="sm"
-          variant={showWeaponRings ? "default" : "outline"}
-          onClick={onToggleWeaponRings}
-          className="h-7 text-[10px] font-mono uppercase tracking-wider"
-        >
-          <Maximize2 className="h-3 w-3 mr-1" />
-          Coberturas {showWeaponRings ? "ON" : "OFF"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={showTrails ? "default" : "outline"}
+            onClick={() => setShowTrails((v) => !v)}
+            className="h-7 text-[10px] font-mono uppercase tracking-wider"
+          >
+            <Footprints className="h-3 w-3 mr-1" />
+            Estela {showTrails ? "ON" : "OFF"}
+          </Button>
+          <Button
+            size="sm"
+            variant={showWeaponRings ? "default" : "outline"}
+            onClick={onToggleWeaponRings}
+            className="h-7 text-[10px] font-mono uppercase tracking-wider"
+          >
+            <Maximize2 className="h-3 w-3 mr-1" />
+            Coberturas {showWeaponRings ? "ON" : "OFF"}
+          </Button>
+        </div>
       </div>
 
       <div ref={ref} className="hud-panel relative aspect-square w-full max-w-[820px] mx-auto bg-gradient-hud overflow-hidden">
