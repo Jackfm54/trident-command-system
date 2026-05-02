@@ -246,10 +246,26 @@ export function TacticalRadar({
             <text x="208" y="204" fill="hsl(var(--threat-friend))" fontSize="9" fontFamily="JetBrains Mono">ARC-FRIGATE</text>
           </g>
 
+          {/* Trails */}
+          {showTrails && filtered.map((c) => {
+            const trail = trailsRef.current.get(c.id);
+            if (!trail || trail.length < 2) return null;
+            const meta = CLASSIFICATION_META[c.classification];
+            const color = `hsl(var(--${meta.color}))`;
+            const d = trail.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+            return (
+              <g key={`trail-${c.id}`} opacity="0.7">
+                <path d={d} fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="2 2" opacity="0.55" />
+                {trail.slice(-6).map((p, i) => (
+                  <circle key={i} cx={p.x} cy={p.y} r={0.8 + i * 0.25} fill={color} opacity={0.15 + i * 0.12} />
+                ))}
+              </g>
+            );
+          })}
+
           {/* Contacts */}
           {filtered.map((c) => {
             const rawCr = (c.range_nm ?? 0) * scale;
-            const offScope = rawCr > 195;
             const cr = Math.min(rawCr, 195);
             const a = ((c.bearing ?? 0) * Math.PI) / 180;
             const x = 200 + cr * Math.sin(a);
@@ -257,9 +273,21 @@ export function TacticalRadar({
             const meta = CLASSIFICATION_META[c.classification];
             const selected = c.id === selectedId;
             const color = `hsl(var(--${meta.color}))`;
+            // Velocity vector (leader line) — length proportional to speed
+            const spd = c.speed_kts ?? 0;
+            const hd = ((c.heading ?? 0) * Math.PI) / 180;
+            const vecLen = Math.min(28, spd / 8); // px
+            const vx = x + vecLen * Math.sin(hd);
+            const vy = y - vecLen * Math.cos(hd);
+            const labelOffsetX = x > 200 ? 12 : -12;
+            const labelAnchor = x > 200 ? "start" : "end";
             return (
               <g key={c.id} onClick={() => onSelect?.(c.id)} style={{ cursor: "pointer" }}>
-                {selected && <circle cx={x} cy={y} r="14" fill="none" stroke={color} strokeWidth="1" opacity="0.6" />}
+                {selected && <circle cx={x} cy={y} r="14" fill="none" stroke={color} strokeWidth="1" opacity="0.7" />}
+                {/* Heading vector */}
+                {spd > 0 && (
+                  <line x1={x} y1={y} x2={vx} y2={vy} stroke={color} strokeWidth="1" opacity="0.85" />
+                )}
                 <text
                   x={x} y={y + 4}
                   fill={color}
@@ -272,9 +300,22 @@ export function TacticalRadar({
                 >
                   {meta.symbol}
                 </text>
-                <text x={x + 10} y={y - 4} fill={color} fontSize="7" fontFamily="JetBrains Mono" opacity="0.85">
-                  {c.track_id}
-                </text>
+                {/* Data block: track_id / heading-speed / range */}
+                <g
+                  fontFamily="JetBrains Mono"
+                  fontSize="6.5"
+                  fill={color}
+                  textAnchor={labelAnchor}
+                  style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 1.8 }}
+                >
+                  <text x={x + labelOffsetX} y={y - 6} fontWeight="bold">{c.track_id}</text>
+                  <text x={x + labelOffsetX} y={y + 2} opacity="0.9">
+                    {String(Math.round(c.heading ?? 0)).padStart(3, "0")}° · {Math.round(spd)}kt
+                  </text>
+                  <text x={x + labelOffsetX} y={y + 10} opacity="0.85">
+                    {(c.range_nm ?? 0).toFixed(1)}nm
+                  </text>
+                </g>
               </g>
             );
           })}
