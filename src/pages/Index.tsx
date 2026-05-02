@@ -100,9 +100,19 @@ const Index = () => {
     await supabase.from("tactical_events").delete().eq("scenario_id", id);
     const scn = scenarios.find((s) => s.id === id);
     const dom = (scn?.domain && scn.domain !== "mixed" ? (scn.domain as Domain) : undefined);
-    // seed initial contacts based on threat level
+    const isDroneSwarm = scn?.name?.toLowerCase().includes("enjambre");
     const count = scn?.threat_level === "critical" ? 8 : scn?.threat_level === "high" ? 6 : 4;
-    const seeds = Array.from({ length: count }, () => generateRandomContact(id, dom));
+    let seeds;
+    if (isDroneSwarm) {
+      seeds = [
+        ...Array.from({ length: 3 }, () => ({ ...generateRandomContact(id, "air"), platform_type: "uav-kamikaze" })),
+        ...Array.from({ length: 2 }, () => ({ ...generateRandomContact(id, "air"), platform_type: "loitering-munition" })),
+        ...Array.from({ length: 3 }, () => ({ ...generateRandomContact(id, "surface"), platform_type: "usv-kamikaze" })),
+        ...Array.from({ length: 2 }, () => ({ ...generateRandomContact(id, "subsurface"), platform_type: "uuv-recon" })),
+      ];
+    } else {
+      seeds = Array.from({ length: count }, () => generateRandomContact(id, dom));
+    }
     await supabase.from("contacts").insert(seeds);
     await supabase.from("tactical_events").insert({
       scenario_id: id,
