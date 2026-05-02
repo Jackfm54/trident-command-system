@@ -321,6 +321,9 @@ const Index = () => {
     toast[lvl === "red" ? "error" : "success"](`Condición de alerta ${lvl.toUpperCase()}`);
   };
 
+  const [radarRange, setRadarRange] = useState<number>(40);
+  const [showWeaponRings, setShowWeaponRings] = useState(true);
+
   const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
   const filteredContacts = tab === "ALL" ? contacts : contacts.filter((c) => c.domain === tab);
 
