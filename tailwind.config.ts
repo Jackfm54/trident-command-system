@@ -47,6 +47,19 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        domain: {
+          air: "hsl(var(--domain-air))",
+          surface: "hsl(var(--domain-surface))",
+          subsurface: "hsl(var(--domain-subsurface))",
+          electronic: "hsl(var(--domain-electronic))",
+        },
+        threat: {
+          friend: "hsl(var(--threat-friend))",
+          hostile: "hsl(var(--threat-hostile))",
+          neutral: "hsl(var(--threat-neutral))",
+          suspect: "hsl(var(--threat-suspect))",
+          unknown: "hsl(var(--threat-unknown))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
