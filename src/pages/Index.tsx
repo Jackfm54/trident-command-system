@@ -187,9 +187,72 @@ const Index = () => {
       event_type: "engagement",
       domain: c.domain,
       severity: "critical",
-      message: `WEAPONS RELEASE sobre ${c.track_id} (${c.platform_type})`,
+      message: `WEAPONS RELEASE sobre ${c.track_id} (${c.platform_type ?? "unknown"})`,
     });
     toast.error(`Engaged ${c.track_id}`);
+    // Remove neutralized contact after short delay
+    setTimeout(async () => {
+      await supabase.from("contacts").delete().eq("id", c.id);
+      await supabase.from("tactical_events").insert({
+        scenario_id: c.scenario_id,
+        contact_id: null,
+        event_type: "engagement",
+        domain: c.domain,
+        severity: "info",
+        message: `${c.track_id} neutralizado · splash`,
+      });
+      setSelectedId((s) => (s === c.id ? null : s));
+    }, 1500);
+  };
+
+  const shadow = async (c: Contact) => {
+    const next = c.status === "shadow" ? "tracking" : "shadow";
+    await supabase.from("contacts").update({ status: next }).eq("id", c.id);
+    await supabase.from("tactical_events").insert({
+      scenario_id: c.scenario_id,
+      contact_id: c.id,
+      event_type: "shadow",
+      domain: c.domain,
+      severity: "info",
+      message: next === "shadow"
+        ? `Track ${c.track_id} en SHADOW · seguimiento prioritario`
+        : `Track ${c.track_id} fuera de SHADOW`,
+    });
+    toast.success(next === "shadow" ? `${c.track_id} en SHADOW` : `${c.track_id} liberado`);
+  };
+
+  const jam = async (c: Contact) => {
+    if (c.domain !== "electronic" && c.domain !== "air") {
+      toast.warning("JAM solo aplica a emisores aéreos/electrónicos");
+      return;
+    }
+    await supabase.from("tactical_events").insert({
+      scenario_id: c.scenario_id,
+      contact_id: c.id,
+      event_type: "jamming",
+      domain: c.domain,
+      severity: "warning",
+      message: `EW activa jamming sobre ${c.track_id} · degradando guidance`,
+    });
+    // simulate effect: reduce speed/heading deviation
+    await supabase.from("contacts").update({
+      speed_kts: Math.max(0, (c.speed_kts ?? 0) * 0.6),
+      heading: ((c.heading ?? 0) + 45) % 360,
+      status: "jammed",
+    }).eq("id", c.id);
+    toast.success(`Jamming activo sobre ${c.track_id}`);
+  };
+
+  const classifyAll = async () => {
+    const unknowns = contacts.filter((c) => c.classification === "unknown");
+    if (unknowns.length === 0) {
+      toast.info("No hay contactos sin clasificar");
+      return;
+    }
+    toast.info(`Clasificando ${unknowns.length} contactos...`);
+    for (const c of unknowns) {
+      await classify(c);
+    }
   };
 
   const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
@@ -229,6 +292,7 @@ const Index = () => {
           onActivate={activateScenario}
           onStop={stop}
           onAddContact={addManualContact}
+          onClassifyAll={classifyAll}
           running={!!activeScenario}
         />
 
@@ -253,30 +317,39 @@ const Index = () => {
 
           {TAB_DOMAINS.map((t) => (
             <TabsContent key={t.key} value={t.key} className="mt-3">
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-                <div className="xl:col-span-4">
-                  <ContactList
-                    contacts={filteredContacts}
-                    selectedId={selectedId}
-                    onSelect={setSelectedId}
-                    onClassify={classify}
-                    classifyingId={classifyingId}
-                  />
+              <div>
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+                  <div className="xl:col-span-4">
+                    <ContactList
+                      contacts={filteredContacts}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      onClassify={classify}
+                      classifyingId={classifyingId}
+                    />
+                  </div>
+                  <div className="xl:col-span-5">
+                    <TacticalRadar
+                      contacts={contacts}
+                      filterDomain={t.key === "ALL" ? "all" : t.key}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                    />
+                  </div>
+                  <div className="xl:col-span-3 flex flex-col gap-3">
+                    <ContactDetail
+                      contact={selected}
+                      onEngage={engage}
+                      onShadow={shadow}
+                      onJam={jam}
+                      onClassify={classify}
+                      classifying={classifyingId === selected?.id}
+                    />
+                  </div>
                 </div>
-                <div className="xl:col-span-5">
-                  <TacticalRadar
-                    contacts={contacts}
-                    filterDomain={t.key === "ALL" ? "all" : t.key}
-                    selectedId={selectedId}
-                    onSelect={setSelectedId}
-                  />
+                <div className="mt-3">
+                  <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
                 </div>
-                <div className="xl:col-span-3 flex flex-col gap-3">
-                  <ContactDetail contact={selected} onEngage={engage} />
-                </div>
-              </div>
-              <div className="mt-3">
-                <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
               </div>
             </TabsContent>
           ))}
