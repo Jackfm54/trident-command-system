@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META } from "@/types/tactical";
 import { advanceContact, generateRandomContact } from "@/lib/simulator";
+import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem } from "@/lib/combatSystems";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TacticalRadar } from "@/components/tactical/TacticalRadar";
 import { ContactList } from "@/components/tactical/ContactList";
@@ -9,6 +10,10 @@ import { ContactDetail } from "@/components/tactical/ContactDetail";
 import { EventLog } from "@/components/tactical/EventLog";
 import { ScenarioBar } from "@/components/tactical/ScenarioBar";
 import { DomainStatus } from "@/components/tactical/DomainStatus";
+import { SensorsPanel } from "@/components/tactical/SensorsPanel";
+import { WeaponsPanel } from "@/components/tactical/WeaponsPanel";
+import { ShipStatusPanel } from "@/components/tactical/ShipStatusPanel";
+import { EngagementDialog } from "@/components/tactical/EngagementDialog";
 import { toast } from "sonner";
 import { Activity, Radar, Anchor, Waves, Radio } from "lucide-react";
 
@@ -28,7 +33,11 @@ const Index = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [classifyingId, setClassifyingId] = useState<string | null>(null);
   const [tab, setTab] = useState<"ALL" | Domain>("ALL");
-  const simRef = useRef<number | null>(null);
+  const [sensors, setSensors] = useState<Sensor[]>(INITIAL_SENSORS);
+  const [weapons, setWeapons] = useState<Weapon[]>(INITIAL_WEAPONS);
+  const [ship, setShip] = useState<ShipSystem>(INITIAL_SHIP);
+  const [engageOpen, setEngageOpen] = useState(false);
+  const [engageContact, setEngageContact] = useState<Contact | null>(null);
 
   // Load scenarios once
   useEffect(() => {
