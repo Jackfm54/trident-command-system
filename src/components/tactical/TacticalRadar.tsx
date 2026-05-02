@@ -37,9 +37,36 @@ export function TacticalRadar({
   onToggleWeaponRings,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const [showTrails, setShowTrails] = useState(true);
+  const trailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
+  const [, force] = useState(0);
 
   const filtered = contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain);
   const scale = 195 / rangeNm; // px per nm
+
+  // Update trails every time contacts change
+  useEffect(() => {
+    const now = Date.now();
+    const map = trailsRef.current;
+    const seen = new Set<string>();
+    filtered.forEach((c) => {
+      seen.add(c.id);
+      const cr = Math.min((c.range_nm ?? 0) * scale, 195);
+      const a = ((c.bearing ?? 0) * Math.PI) / 180;
+      const x = 200 + cr * Math.sin(a);
+      const y = 200 - cr * Math.cos(a);
+      const arr = map.get(c.id) ?? [];
+      const last = arr[arr.length - 1];
+      if (!last || Math.hypot(last.x - x, last.y - y) > 1) {
+        arr.push({ x, y, t: now });
+        while (arr.length > 25) arr.shift();
+        map.set(c.id, arr);
+      }
+    });
+    // prune
+    Array.from(map.keys()).forEach((k) => { if (!seen.has(k)) map.delete(k); });
+    force((n) => n + 1);
+  }, [contacts, rangeNm, filterDomain]);
 
   const ringStep = rangeNm / 4;
   const rings = [1, 2, 3, 4].map((i) => ({ nm: ringStep * i, r: scale * ringStep * i }));
