@@ -342,62 +342,89 @@ const Index = () => {
 
         <DomainStatus contacts={contacts} />
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-          <TabsList className="bg-card/60 border border-border h-auto p-1 flex-wrap">
-            {TAB_DOMAINS.map((t) => {
-              const Icon = t.icon;
-              return (
-                <TabsTrigger
-                  key={t.key}
-                  value={t.key}
-                  className="font-mono uppercase text-xs tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow-amber"
-                >
-                  <Icon className="w-3.5 h-3.5 mr-1.5" />
-                  {t.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+          <aside className="xl:col-span-2 space-y-3">
+            <ShipStatusPanel ship={ship} onAlertChange={setAlertLevel} />
+            <SensorsPanel sensors={sensors} onToggle={toggleSensor} />
+          </aside>
 
-          {TAB_DOMAINS.map((t) => (
-            <TabsContent key={t.key} value={t.key} className="mt-3">
-              <div>
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-                  <div className="xl:col-span-4">
-                    <ContactList
-                      contacts={filteredContacts}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      onClassify={classify}
-                      classifyingId={classifyingId}
-                    />
+          <section className="xl:col-span-8">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+              <TabsList className="bg-card/60 border border-border h-auto p-1 flex-wrap">
+                {TAB_DOMAINS.map((t) => {
+                  const Icon = t.icon;
+                  return (
+                    <TabsTrigger
+                      key={t.key}
+                      value={t.key}
+                      className="font-mono uppercase text-xs tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow-amber"
+                    >
+                      <Icon className="w-3.5 h-3.5 mr-1.5" />
+                      {t.label}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {TAB_DOMAINS.map((t) => (
+                <TabsContent key={t.key} value={t.key} className="mt-3">
+                  <div>
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+                      <div className="xl:col-span-5">
+                        <ContactList
+                          contacts={filteredContacts}
+                          selectedId={selectedId}
+                          onSelect={setSelectedId}
+                          onClassify={classify}
+                          classifyingId={classifyingId}
+                        />
+                      </div>
+                      <div className="xl:col-span-7">
+                        <TacticalRadar
+                          contacts={contacts}
+                          filterDomain={t.key === "ALL" ? "all" : t.key}
+                          selectedId={selectedId}
+                          onSelect={setSelectedId}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 mt-3">
+                      <div className="xl:col-span-5">
+                        <ContactDetail
+                          contact={selected}
+                          onEngage={openEngage}
+                          onShadow={shadow}
+                          onJam={jam}
+                          onClassify={classify}
+                          classifying={classifyingId === selected?.id}
+                        />
+                      </div>
+                      <div className="xl:col-span-7">
+                        <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="xl:col-span-5">
-                    <TacticalRadar
-                      contacts={contacts}
-                      filterDomain={t.key === "ALL" ? "all" : t.key}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                    />
-                  </div>
-                  <div className="xl:col-span-3 flex flex-col gap-3">
-                    <ContactDetail
-                      contact={selected}
-                      onEngage={engage}
-                      onShadow={shadow}
-                      onJam={jam}
-                      onClassify={classify}
-                      classifying={classifyingId === selected?.id}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
-                </div>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </section>
+
+          <aside className="xl:col-span-2">
+            <WeaponsPanel
+              weapons={weapons}
+              filter={tab === "ALL" ? "all" : tab}
+              onSelect={(w) => selected && fireWeapon(w, selected)}
+            />
+          </aside>
+        </div>
+
+        <EngagementDialog
+          open={engageOpen}
+          contact={engageContact}
+          weapons={weapons}
+          onClose={() => setEngageOpen(false)}
+          onFire={fireWeapon}
+        />
 
         <footer className="text-center text-[10px] font-mono uppercase tracking-[0.3em] text-muted-foreground pt-4">
           ARMADA NACIONAL DE COLOMBIA · DEMOSTRADOR · NO APTO PARA OPERACIONES REALES
