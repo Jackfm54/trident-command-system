@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META } from "@/types/tactical";
 import { advanceContact, generateRandomContact } from "@/lib/simulator";
+import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem } from "@/lib/combatSystems";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TacticalRadar } from "@/components/tactical/TacticalRadar";
 import { ContactList } from "@/components/tactical/ContactList";
@@ -9,6 +10,10 @@ import { ContactDetail } from "@/components/tactical/ContactDetail";
 import { EventLog } from "@/components/tactical/EventLog";
 import { ScenarioBar } from "@/components/tactical/ScenarioBar";
 import { DomainStatus } from "@/components/tactical/DomainStatus";
+import { SensorsPanel } from "@/components/tactical/SensorsPanel";
+import { WeaponsPanel } from "@/components/tactical/WeaponsPanel";
+import { ShipStatusPanel } from "@/components/tactical/ShipStatusPanel";
+import { EngagementDialog } from "@/components/tactical/EngagementDialog";
 import { toast } from "sonner";
 import { Activity, Radar, Anchor, Waves, Radio } from "lucide-react";
 
@@ -28,6 +33,11 @@ const Index = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [classifyingId, setClassifyingId] = useState<string | null>(null);
   const [tab, setTab] = useState<"ALL" | Domain>("ALL");
+  const [sensors, setSensors] = useState<Sensor[]>(INITIAL_SENSORS);
+  const [weapons, setWeapons] = useState<Weapon[]>(INITIAL_WEAPONS);
+  const [ship, setShip] = useState<ShipSystem>(INITIAL_SHIP);
+  const [engageOpen, setEngageOpen] = useState(false);
+  const [engageContact, setEngageContact] = useState<Contact | null>(null);
   const simRef = useRef<number | null>(null);
 
   // Load scenarios once
@@ -189,30 +199,54 @@ const Index = () => {
     }
   };
 
-  const engage = async (c: Contact) => {
+  const openEngage = (c: Contact) => {
+    setEngageContact(c);
+    setEngageOpen(true);
+  };
+
+  const fireWeapon = async (w: Weapon, c: Contact) => {
+    setEngageOpen(false);
+    // decrement ammo
+    setWeapons((ws) => ws.map((x) => (x.id === w.id ? { ...x, ammo: Math.max(0, x.ammo - (w.type === "ciws" ? 100 : w.type === "gun" ? 8 : 1)) } : x)));
     await supabase.from("contacts").update({ status: "engaged" }).eq("id", c.id);
+    const tof = ((c.range_nm ?? 0) / Math.max(1, w.speed_kts)) * 3600;
     await supabase.from("tactical_events").insert({
       scenario_id: c.scenario_id,
       contact_id: c.id,
       event_type: "engagement",
       domain: c.domain,
       severity: "critical",
-      message: `WEAPONS RELEASE sobre ${c.track_id} (${c.platform_type ?? "unknown"})`,
+      message: `🔥 WEAPONS RELEASE · ${w.acronym} → ${c.track_id} · ToF ${tof.toFixed(1)}s · pk ${Math.round(w.pk * 100)}%`,
     });
-    toast.error(`Engaged ${c.track_id}`);
-    // Remove neutralized contact after short delay
+    toast.error(`${w.acronym} fired @ ${c.track_id}`);
+
     setTimeout(async () => {
-      await supabase.from("contacts").delete().eq("id", c.id);
-      await supabase.from("tactical_events").insert({
-        scenario_id: c.scenario_id,
-        contact_id: null,
-        event_type: "engagement",
-        domain: c.domain,
-        severity: "info",
-        message: `${c.track_id} neutralizado · splash`,
-      });
-      setSelectedId((s) => (s === c.id ? null : s));
-    }, 1500);
+      const hit = Math.random() < w.pk;
+      if (hit) {
+        await supabase.from("contacts").delete().eq("id", c.id);
+        await supabase.from("tactical_events").insert({
+          scenario_id: c.scenario_id,
+          contact_id: null,
+          event_type: "splash",
+          domain: c.domain,
+          severity: "info",
+          message: `💥 SPLASH · ${c.track_id} destruido por ${w.acronym}`,
+        });
+        toast.success(`Splash ${c.track_id}`);
+        setSelectedId((s) => (s === c.id ? null : s));
+      } else {
+        await supabase.from("contacts").update({ status: "tracking" }).eq("id", c.id);
+        await supabase.from("tactical_events").insert({
+          scenario_id: c.scenario_id,
+          contact_id: c.id,
+          event_type: "miss",
+          domain: c.domain,
+          severity: "warning",
+          message: `⚠ MISS · ${w.acronym} falló contra ${c.track_id}`,
+        });
+        toast.warning(`Miss ${c.track_id} · reattack`);
+      }
+    }, Math.min(4000, Math.max(800, tof * 100)));
   };
 
   const shadow = async (c: Contact) => {
@@ -265,6 +299,28 @@ const Index = () => {
     }
   };
 
+  const toggleSensor = (id: string) => {
+    setSensors((ss) => ss.map((s) => {
+      if (s.id !== id) return s;
+      const next = s.status === "online" ? "standby" : s.status === "standby" ? "online" : s.status;
+      return { ...s, status: next };
+    }));
+  };
+
+  const setAlertLevel = async (lvl: ShipSystem["alert_level"]) => {
+    setShip((s) => ({ ...s, alert_level: lvl, cms_status: lvl === "red" ? "battle" : lvl === "yellow" ? "degraded" : "nominal" }));
+    if (activeScenario) {
+      await supabase.from("tactical_events").insert({
+        scenario_id: activeScenario,
+        event_type: "battle_stations",
+        domain: "mixed",
+        severity: lvl === "red" ? "critical" : "info",
+        message: `BATTLE STATIONS · CONDICIÓN ${lvl === "white" ? "III" : lvl === "yellow" ? "II" : "I"}`,
+      });
+    }
+    toast[lvl === "red" ? "error" : "success"](`Condición de alerta ${lvl.toUpperCase()}`);
+  };
+
   const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
   const filteredContacts = tab === "ALL" ? contacts : contacts.filter((c) => c.domain === tab);
 
@@ -308,62 +364,89 @@ const Index = () => {
 
         <DomainStatus contacts={contacts} />
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-          <TabsList className="bg-card/60 border border-border h-auto p-1 flex-wrap">
-            {TAB_DOMAINS.map((t) => {
-              const Icon = t.icon;
-              return (
-                <TabsTrigger
-                  key={t.key}
-                  value={t.key}
-                  className="font-mono uppercase text-xs tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow-amber"
-                >
-                  <Icon className="w-3.5 h-3.5 mr-1.5" />
-                  {t.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+          <aside className="xl:col-span-2 space-y-3">
+            <ShipStatusPanel ship={ship} onAlertChange={setAlertLevel} />
+            <SensorsPanel sensors={sensors} onToggle={toggleSensor} />
+          </aside>
 
-          {TAB_DOMAINS.map((t) => (
-            <TabsContent key={t.key} value={t.key} className="mt-3">
-              <div>
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-                  <div className="xl:col-span-4">
-                    <ContactList
-                      contacts={filteredContacts}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      onClassify={classify}
-                      classifyingId={classifyingId}
-                    />
+          <section className="xl:col-span-8">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+              <TabsList className="bg-card/60 border border-border h-auto p-1 flex-wrap">
+                {TAB_DOMAINS.map((t) => {
+                  const Icon = t.icon;
+                  return (
+                    <TabsTrigger
+                      key={t.key}
+                      value={t.key}
+                      className="font-mono uppercase text-xs tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow-amber"
+                    >
+                      <Icon className="w-3.5 h-3.5 mr-1.5" />
+                      {t.label}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {TAB_DOMAINS.map((t) => (
+                <TabsContent key={t.key} value={t.key} className="mt-3">
+                  <div>
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+                      <div className="xl:col-span-5">
+                        <ContactList
+                          contacts={filteredContacts}
+                          selectedId={selectedId}
+                          onSelect={setSelectedId}
+                          onClassify={classify}
+                          classifyingId={classifyingId}
+                        />
+                      </div>
+                      <div className="xl:col-span-7">
+                        <TacticalRadar
+                          contacts={contacts}
+                          filterDomain={t.key === "ALL" ? "all" : t.key}
+                          selectedId={selectedId}
+                          onSelect={setSelectedId}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 mt-3">
+                      <div className="xl:col-span-5">
+                        <ContactDetail
+                          contact={selected}
+                          onEngage={openEngage}
+                          onShadow={shadow}
+                          onJam={jam}
+                          onClassify={classify}
+                          classifying={classifyingId === selected?.id}
+                        />
+                      </div>
+                      <div className="xl:col-span-7">
+                        <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="xl:col-span-5">
-                    <TacticalRadar
-                      contacts={contacts}
-                      filterDomain={t.key === "ALL" ? "all" : t.key}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                    />
-                  </div>
-                  <div className="xl:col-span-3 flex flex-col gap-3">
-                    <ContactDetail
-                      contact={selected}
-                      onEngage={engage}
-                      onShadow={shadow}
-                      onJam={jam}
-                      onClassify={classify}
-                      classifying={classifyingId === selected?.id}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
-                </div>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </section>
+
+          <aside className="xl:col-span-2">
+            <WeaponsPanel
+              weapons={weapons}
+              filter={tab === "ALL" ? "all" : tab}
+              onSelect={(w) => selected && fireWeapon(w, selected)}
+            />
+          </aside>
+        </div>
+
+        <EngagementDialog
+          open={engageOpen}
+          contact={engageContact}
+          weapons={weapons}
+          onClose={() => setEngageOpen(false)}
+          onFire={fireWeapon}
+        />
 
         <footer className="text-center text-[10px] font-mono uppercase tracking-[0.3em] text-muted-foreground pt-4">
           ARMADA NACIONAL DE COLOMBIA · DEMOSTRADOR · NO APTO PARA OPERACIONES REALES
