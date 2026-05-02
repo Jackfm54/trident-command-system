@@ -292,6 +292,7 @@ const Index = () => {
           onActivate={activateScenario}
           onStop={stop}
           onAddContact={addManualContact}
+          onClassifyAll={classifyAll}
           running={!!activeScenario}
         />
 
