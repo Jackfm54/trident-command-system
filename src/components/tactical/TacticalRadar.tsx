@@ -1,8 +1,8 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Contact, Domain, CLASSIFICATION_META } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, Footprints } from "lucide-react";
 
 interface Props {
   contacts: Contact[];
