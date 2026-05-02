@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contacts: {
+        Row: {
+          ai_confidence: number | null
+          ai_reasoning: string | null
+          altitude_ft: number | null
+          bearing: number | null
+          classification: string
+          created_at: string
+          domain: string
+          heading: number | null
+          id: string
+          lat: number | null
+          lon: number | null
+          platform_type: string | null
+          range_nm: number | null
+          scenario_id: string | null
+          speed_kts: number | null
+          status: string
+          track_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_reasoning?: string | null
+          altitude_ft?: number | null
+          bearing?: number | null
+          classification?: string
+          created_at?: string
+          domain: string
+          heading?: number | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          platform_type?: string | null
+          range_nm?: number | null
+          scenario_id?: string | null
+          speed_kts?: number | null
+          status?: string
+          track_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_reasoning?: string | null
+          altitude_ft?: number | null
+          bearing?: number | null
+          classification?: string
+          created_at?: string
+          domain?: string
+          heading?: number | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          platform_type?: string | null
+          range_nm?: number | null
+          scenario_id?: string | null
+          speed_kts?: number | null
+          status?: string
+          track_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenarios: {
+        Row: {
+          created_at: string
+          description: string | null
+          domain: string
+          id: string
+          name: string
+          threat_level: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          name: string
+          threat_level?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          name?: string
+          threat_level?: string
+        }
+        Relationships: []
+      }
+      tactical_events: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          domain: string
+          event_type: string
+          id: string
+          message: string
+          metadata: Json | null
+          scenario_id: string | null
+          severity: string
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          domain: string
+          event_type: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          scenario_id?: string | null
+          severity?: string
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          domain?: string
+          event_type?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          scenario_id?: string | null
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tactical_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tactical_events_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
