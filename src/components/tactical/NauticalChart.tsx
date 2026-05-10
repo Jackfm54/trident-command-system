@@ -115,6 +115,19 @@ export function NauticalChart({
 
   return (
     <div className="space-y-2">
+      <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
+        <span className="hud-label">CARTA NÁUTICA · COBERTURAS DE ARMAS</span>
+        <button
+          onClick={() => setLocalShowRings((v) => !v)}
+          className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded border ${
+            showWeaponRings
+              ? "bg-primary text-primary-foreground border-primary shadow-glow-amber"
+              : "border-border text-muted-foreground hover:text-accent"
+          }`}
+        >
+          Coberturas {showWeaponRings ? "ON" : "OFF"}
+        </button>
+      </div>
       <div className="hud-panel relative w-full max-w-[820px] mx-auto overflow-hidden" style={{ height: 600 }}>
         <MapContainer
           center={SHIP}
@@ -126,8 +139,7 @@ export function NauticalChart({
             attribution='© OpenStreetMap'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {/* Dark overlay for tactical feel */}
-          <FitOnce contacts={filtered} />
+          <FitOnce contacts={filtered} weaponMaxNm={showWeaponRings ? weaponMaxNm : 0} />
 
           {/* Weapon coverage rings around ship */}
           {visibleWeapons.map((w) => (
