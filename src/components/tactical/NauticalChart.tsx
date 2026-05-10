@@ -65,17 +65,22 @@ function ContactIcon(symbol: string, color: string, hostile: boolean) {
   });
 }
 
-function FitOnce({ contacts }: { contacts: Contact[] }) {
+function FitOnce({ contacts, weaponMaxNm }: { contacts: Contact[]; weaponMaxNm: number }) {
   const map = useMap();
   const did = useRef(false);
   useEffect(() => {
     if (did.current) return;
-    if (contacts.length === 0) return;
-    const pts: [number, number][] = [SHIP, ...contacts.map((c) => destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0))];
+    const pts: [number, number][] = [SHIP];
+    contacts.forEach((c) => pts.push(destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0)));
+    // Include weapon coverage so user sees the rings on first load
+    if (weaponMaxNm > 0) {
+      [0, 90, 180, 270].forEach((b) => pts.push(destination(SHIP[0], SHIP[1], b, weaponMaxNm)));
+    }
+    if (pts.length < 2) return;
     const b = L.latLngBounds(pts);
-    map.fitBounds(b.pad(0.3));
+    map.fitBounds(b.pad(0.15));
     did.current = true;
-  }, [contacts, map]);
+  }, [contacts, weaponMaxNm, map]);
   return null;
 }
 
@@ -85,8 +90,11 @@ export function NauticalChart({
   onSelect,
   filterDomain = "all",
   weapons = [],
-  showWeaponRings = true,
+  showWeaponRings: showWeaponRingsProp = true,
 }: Props) {
+  const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
+  const showWeaponRings = localShowRings;
+
   const filtered = useMemo(
     () => contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain),
     [contacts, filterDomain]
@@ -98,6 +106,11 @@ export function NauticalChart({
       w.type !== "decoy" &&
       w.ammo > 0 &&
       (filterDomain === "all" || w.domain === filterDomain)
+  );
+
+  const weaponMaxNm = useMemo(
+    () => (weapons ?? []).filter((w) => w.type !== "decoy" && w.ammo > 0).reduce((m, w) => Math.max(m, w.range_nm), 0),
+    [weapons]
   );
 
   return (
