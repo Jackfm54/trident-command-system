@@ -324,6 +324,7 @@ const Index = () => {
 
   const [radarRange, setRadarRange] = useState<number>(40);
   const [showWeaponRings, setShowWeaponRings] = useState(true);
+  const [viewMode, setViewMode] = useState<"ppi" | "chart">("ppi");
 
   const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
   const filteredContacts = tab === "ALL" ? contacts : contacts.filter((c) => c.domain === tab);
