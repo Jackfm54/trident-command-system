@@ -174,7 +174,7 @@ export function NauticalChart({
                 {c.id === selectedId && (
                   <CircleMarker center={pos} radius={14} pathOptions={{ color, weight: 1.5, fill: false, opacity: 0.8 }} />
                 )}
-              </div>
+              </Fragment>
             );
           })}
         </MapContainer>
