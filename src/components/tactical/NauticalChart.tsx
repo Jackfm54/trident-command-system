@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -65,17 +65,22 @@ function ContactIcon(symbol: string, color: string, hostile: boolean) {
   });
 }
 
-function FitOnce({ contacts }: { contacts: Contact[] }) {
+function FitOnce({ contacts, weaponMaxNm }: { contacts: Contact[]; weaponMaxNm: number }) {
   const map = useMap();
   const did = useRef(false);
   useEffect(() => {
     if (did.current) return;
-    if (contacts.length === 0) return;
-    const pts: [number, number][] = [SHIP, ...contacts.map((c) => destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0))];
+    const pts: [number, number][] = [SHIP];
+    contacts.forEach((c) => pts.push(destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0)));
+    // Include weapon coverage so user sees the rings on first load
+    if (weaponMaxNm > 0) {
+      [0, 90, 180, 270].forEach((b) => pts.push(destination(SHIP[0], SHIP[1], b, weaponMaxNm)));
+    }
+    if (pts.length < 2) return;
     const b = L.latLngBounds(pts);
-    map.fitBounds(b.pad(0.3));
+    map.fitBounds(b.pad(0.15));
     did.current = true;
-  }, [contacts, map]);
+  }, [contacts, weaponMaxNm, map]);
   return null;
 }
 
@@ -85,8 +90,11 @@ export function NauticalChart({
   onSelect,
   filterDomain = "all",
   weapons = [],
-  showWeaponRings = true,
+  showWeaponRings: showWeaponRingsProp = true,
 }: Props) {
+  const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
+  const showWeaponRings = localShowRings;
+
   const filtered = useMemo(
     () => contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain),
     [contacts, filterDomain]
@@ -100,8 +108,26 @@ export function NauticalChart({
       (filterDomain === "all" || w.domain === filterDomain)
   );
 
+  const weaponMaxNm = useMemo(
+    () => (weapons ?? []).filter((w) => w.type !== "decoy" && w.ammo > 0).reduce((m, w) => Math.max(m, w.range_nm), 0),
+    [weapons]
+  );
+
   return (
     <div className="space-y-2">
+      <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
+        <span className="hud-label">CARTA NÁUTICA · COBERTURAS DE ARMAS</span>
+        <button
+          onClick={() => setLocalShowRings((v) => !v)}
+          className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded border ${
+            showWeaponRings
+              ? "bg-primary text-primary-foreground border-primary shadow-glow-amber"
+              : "border-border text-muted-foreground hover:text-accent"
+          }`}
+        >
+          Coberturas {showWeaponRings ? "ON" : "OFF"}
+        </button>
+      </div>
       <div className="hud-panel relative w-full max-w-[820px] mx-auto overflow-hidden" style={{ height: 600 }}>
         <MapContainer
           center={SHIP}
@@ -113,8 +139,7 @@ export function NauticalChart({
             attribution='© OpenStreetMap'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {/* Dark overlay for tactical feel */}
-          <FitOnce contacts={filtered} />
+          <FitOnce contacts={filtered} weaponMaxNm={showWeaponRings ? weaponMaxNm : 0} />
 
           {/* Weapon coverage rings around ship */}
           {visibleWeapons.map((w) => (
