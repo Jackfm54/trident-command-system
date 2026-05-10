@@ -15,6 +15,7 @@ import { SensorsPanel } from "@/components/tactical/SensorsPanel";
 import { WeaponsPanel } from "@/components/tactical/WeaponsPanel";
 import { ShipStatusPanel } from "@/components/tactical/ShipStatusPanel";
 import { EngagementDialog } from "@/components/tactical/EngagementDialog";
+import { VisualIntelPanel } from "@/components/tactical/VisualIntelPanel";
 import { toast } from "sonner";
 import { Activity, Radar, Anchor, Waves, Radio } from "lucide-react";
 
@@ -466,6 +467,30 @@ const Index = () => {
                         <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
                       </div>
                     </div>
+
+                    <VisualIntelPanel
+                      contacts={contacts}
+                      onSelectTrack={setSelectedId}
+                      onApplyClassification={async (trackId, det) => {
+                        const c = contacts.find((x) => x.track_id === trackId);
+                        if (!c) return;
+                        await supabase.from("contacts").update({
+                          classification: det.classification,
+                          platform_type: det.label,
+                          ai_confidence: det.confidence,
+                          ai_reasoning: `Visual ID (Gemini 2.5 Pro): ${det.behavior ?? det.label}. ${det.recommended_action}`,
+                        }).eq("id", c.id);
+                        await supabase.from("tactical_events").insert({
+                          scenario_id: c.scenario_id,
+                          contact_id: c.id,
+                          event_type: "visual_id",
+                          domain: c.domain,
+                          severity: det.classification === "hostile" ? "critical" : "info",
+                          message: `📷 VISUAL ID · ${c.track_id} → ${det.label} (${det.classification.toUpperCase()}) conf ${(det.confidence*100).toFixed(0)}%`,
+                        });
+                        toast.success(`${c.track_id} actualizado por Visual ID`);
+                      }}
+                    />
                   </div>
                 </TabsContent>
               ))}
