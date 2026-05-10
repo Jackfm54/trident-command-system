@@ -1,1 +1,7 @@
 project_id = "kjegdwdllojmhcitjrgq"
+
+[functions.visual-detect]
+verify_jwt = false
+
+[functions.classify-contact]
+verify_jwt = false
