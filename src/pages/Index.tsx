@@ -5,6 +5,7 @@ import { advanceContact, generateRandomContact } from "@/lib/simulator";
 import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem } from "@/lib/combatSystems";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TacticalRadar } from "@/components/tactical/TacticalRadar";
+import { NauticalChart } from "@/components/tactical/NauticalChart";
 import { ContactList } from "@/components/tactical/ContactList";
 import { ContactDetail } from "@/components/tactical/ContactDetail";
 import { EventLog } from "@/components/tactical/EventLog";
