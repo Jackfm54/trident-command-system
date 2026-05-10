@@ -154,7 +154,7 @@ export function NauticalChart({
             // velocity vector — project 3 minutes ahead
             const ahead = destination(pos[0], pos[1], c.heading ?? 0, (spd / 60) * 3);
             return (
-              <div key={c.id}>
+              <Fragment key={c.id}>
                 <Marker
                   position={pos}
                   icon={ContactIcon(meta.symbol, color, c.classification === "hostile")}
