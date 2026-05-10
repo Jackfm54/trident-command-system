@@ -396,20 +396,49 @@ const Index = () => {
               {TAB_DOMAINS.map((t) => (
                 <TabsContent key={t.key} value={t.key} className="mt-3">
                   <div className="space-y-3">
-                    {/* Radar centered & large */}
+                    {/* View toggle */}
+                    <div className="flex justify-center">
+                      <div className="hud-panel inline-flex p-1 gap-1">
+                        <button
+                          onClick={() => setViewMode("ppi")}
+                          className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded ${viewMode === "ppi" ? "bg-primary text-primary-foreground shadow-glow-amber" : "text-muted-foreground hover:text-accent"}`}
+                        >
+                          PPI · Radar Táctico
+                        </button>
+                        <button
+                          onClick={() => setViewMode("chart")}
+                          className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded ${viewMode === "chart" ? "bg-primary text-primary-foreground shadow-glow-amber" : "text-muted-foreground hover:text-accent"}`}
+                        >
+                          Carta Náutica Global
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Radar / Chart centered & large */}
                     <div className="flex justify-center">
                       <div className="w-full max-w-[820px]">
-                        <TacticalRadar
-                          contacts={contacts}
-                          filterDomain={t.key === "ALL" ? "all" : t.key}
-                          selectedId={selectedId}
-                          onSelect={setSelectedId}
-                          rangeNm={radarRange}
-                          onRangeChange={setRadarRange}
-                          weapons={weapons}
-                          showWeaponRings={showWeaponRings}
-                          onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
-                        />
+                        {viewMode === "ppi" ? (
+                          <TacticalRadar
+                            contacts={contacts}
+                            filterDomain={t.key === "ALL" ? "all" : t.key}
+                            selectedId={selectedId}
+                            onSelect={setSelectedId}
+                            rangeNm={radarRange}
+                            onRangeChange={setRadarRange}
+                            weapons={weapons}
+                            showWeaponRings={showWeaponRings}
+                            onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
+                          />
+                        ) : (
+                          <NauticalChart
+                            contacts={contacts}
+                            filterDomain={t.key === "ALL" ? "all" : t.key}
+                            selectedId={selectedId}
+                            onSelect={setSelectedId}
+                            weapons={weapons}
+                            showWeaponRings={showWeaponRings}
+                          />
+                        )}
                       </div>
                     </div>
 
