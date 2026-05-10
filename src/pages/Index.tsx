@@ -15,6 +15,7 @@ import { SensorsPanel } from "@/components/tactical/SensorsPanel";
 import { WeaponsPanel } from "@/components/tactical/WeaponsPanel";
 import { ShipStatusPanel } from "@/components/tactical/ShipStatusPanel";
 import { EngagementDialog } from "@/components/tactical/EngagementDialog";
+import { VisualIntelPanel } from "@/components/tactical/VisualIntelPanel";
 import { toast } from "sonner";
 import { Activity, Radar, Anchor, Waves, Radio } from "lucide-react";
 
