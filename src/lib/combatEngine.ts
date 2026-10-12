@@ -93,3 +93,41 @@ export function pickWeapon(c: Contact, weapons: Weapon[]): Weapon | null {
 export function ammoCost(w: Weapon) {
   return w.type === "ciws" ? 100 : w.type === "gun" ? 8 : 1;
 }
+
+// ===== Fleet geometry (integrated exercises) =====
+// Reference frame: x = east nm, y = north nm from the exercise centre. Contacts store range/bearing from the centre.
+export function toXY(c: { range_nm: number | null; bearing: number | null }) {
+  const b = ((c.bearing ?? 0) * Math.PI) / 180;
+  const r0 = c.range_nm ?? 0;
+  return { x: r0 * Math.sin(b), y: r0 * Math.cos(b) };
+}
+export function fromXY(x: number, y: number) {
+  return { range_nm: Math.sqrt(x * x + y * y), bearing: ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360 };
+}
+/** Re-express a centre-frame contact as range/bearing from an own-ship position. */
+export function relativeTo<T extends { range_nm: number | null; bearing: number | null }>(c: T, ox: number, oy: number): T {
+  const p = toXY(c);
+  return { ...c, ...fromXY(p.x - ox, p.y - oy) };
+}
+/** Move a centre-frame contact toward a target point. */
+export function advanceToward(c: Contact, tx: number, ty: number, dtSec: number): Partial<Contact> {
+  const p = toXY(c);
+  const dx = tx - p.x, dy = ty - p.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  const step = ((c.speed_kts ?? 0) * dtSec) / 3600;
+  const k = d <= step || d === 0 ? 1 : step / d;
+  const n = fromXY(p.x + dx * k, p.y + dy * k);
+  return { ...n, heading: ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360 };
+}
+export function distTo(c: Contact, tx: number, ty: number) {
+  const p = toXY(c);
+  return Math.hypot(tx - p.x, ty - p.y);
+}
+/** Attacker seed placed around a target ship (centre frame). */
+export function attackerSeedAt(scenarioId: string, platform: string, unitId: string, ux: number, uy: number): Seed | null {
+  const s = attackerSeed(scenarioId, platform);
+  if (!s) return null;
+  const p = toXY(s);
+  const n = fromXY(ux + p.x, uy + p.y);
+  return { ...s, ...n, heading: ((s.bearing ?? 0) + 180) % 360, target_unit_id: unitId } as Seed;
+}

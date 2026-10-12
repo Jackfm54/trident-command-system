@@ -32,6 +32,7 @@ export type Database = {
           scenario_id: string | null
           speed_kts: number | null
           status: string
+          target_unit_id: string | null
           track_id: string
           updated_at: string
         }
@@ -52,6 +53,7 @@ export type Database = {
           scenario_id?: string | null
           speed_kts?: number | null
           status?: string
+          target_unit_id?: string | null
           track_id: string
           updated_at?: string
         }
@@ -72,6 +74,7 @@ export type Database = {
           scenario_id?: string | null
           speed_kts?: number | null
           status?: string
+          target_unit_id?: string | null
           track_id?: string
           updated_at?: string
         }
@@ -141,6 +144,8 @@ export type Database = {
           impacts: number
           kills: number
           name: string
+          pos_x_nm: number
+          pos_y_nm: number
           power: number
           propulsion: number
           scenario_id: string | null
@@ -159,6 +164,8 @@ export type Database = {
           impacts?: number
           kills?: number
           name: string
+          pos_x_nm?: number
+          pos_y_nm?: number
           power?: number
           propulsion?: number
           scenario_id?: string | null
@@ -177,6 +184,8 @@ export type Database = {
           impacts?: number
           kills?: number
           name?: string
+          pos_x_nm?: number
+          pos_y_nm?: number
           power?: number
           propulsion?: number
           scenario_id?: string | null
@@ -208,7 +217,9 @@ export type Database = {
           created_by: string
           ended_at: string | null
           id: string
+          mode: string
           name: string
+          scenario_id: string | null
           started_at: string | null
           status: string
         }
@@ -217,7 +228,9 @@ export type Database = {
           created_by: string
           ended_at?: string | null
           id?: string
+          mode?: string
           name: string
+          scenario_id?: string | null
           started_at?: string | null
           status?: string
         }
@@ -226,11 +239,21 @@ export type Database = {
           created_by?: string
           ended_at?: string | null
           id?: string
+          mode?: string
           name?: string
+          scenario_id?: string | null
           started_at?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exercises_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
