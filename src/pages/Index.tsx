@@ -17,6 +17,17 @@ import { ShipStatusPanel } from "@/components/tactical/ShipStatusPanel";
 import { EngagementDialog } from "@/components/tactical/EngagementDialog";
 import { VisualIntelPanel } from "@/components/tactical/VisualIntelPanel";
 import { toast } from "sonner";
+import { TrainingPanel } from "@/components/tactical/TrainingPanel";
+import { isDetected, advanceAttacker, IMPACT_DAMAGE, generateAttackWave, pickWeapon, ammoCost } from "@/lib/combatEngine";
+
+function load<T>(key: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? (JSON.parse(v) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 import { Activity, Radar, Anchor, Waves, Radio } from "lucide-react";
 
 const TAB_DOMAINS: { key: "ALL" | Domain; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -35,12 +46,31 @@ const Index = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [classifyingId, setClassifyingId] = useState<string | null>(null);
   const [tab, setTab] = useState<"ALL" | Domain>("ALL");
-  const [sensors, setSensors] = useState<Sensor[]>(INITIAL_SENSORS);
-  const [weapons, setWeapons] = useState<Weapon[]>(INITIAL_WEAPONS);
-  const [ship, setShip] = useState<ShipSystem>(INITIAL_SHIP);
+  const [sensors, setSensors] = useState<Sensor[]>(() => load("tcm.sensors", INITIAL_SENSORS));
+  const [weapons, setWeapons] = useState<Weapon[]>(() => load("tcm.weapons", INITIAL_WEAPONS));
+  const [ship, setShip] = useState<ShipSystem>(() => load("tcm.ship", INITIAL_SHIP));
   const [engageOpen, setEngageOpen] = useState(false);
   const [engageContact, setEngageContact] = useState<Contact | null>(null);
+  const [training, setTraining] = useState(false);
+  const [autoDefense, setAutoDefense] = useState(false);
+  const [difficulty, setDifficulty] = useState(2);
+  const [stats, setStats] = useState({ kills: 0, impacts: 0, waves: 0 });
   const simRef = useRef<number | null>(null);
+  const contactsRef = useRef<Contact[]>([]);
+  const weaponsRef = useRef(weapons);
+  const sensorsRef = useRef(sensors);
+  const shipRef = useRef(ship);
+  const autoRef = useRef(autoDefense);
+  const engagedRef = useRef<Set<string>>(new Set());
+  contactsRef.current = contacts;
+  weaponsRef.current = weapons;
+  sensorsRef.current = sensors;
+  shipRef.current = ship;
+  autoRef.current = autoDefense;
+
+  useEffect(() => { localStorage.setItem("tcm.sensors", JSON.stringify(sensors)); }, [sensors]);
+  useEffect(() => { localStorage.setItem("tcm.weapons", JSON.stringify(weapons)); }, [weapons]);
+  useEffect(() => { localStorage.setItem("tcm.ship", JSON.stringify(ship)); }, [ship]);
 
   // Load scenarios once
   useEffect(() => {
@@ -84,7 +114,7 @@ const Index = () => {
     };
   }, [activeScenario]);
 
-  // Simulation loop — advance positions locally + occasional spawn
+  // Simulation loop — kinematics, attacker homing, impacts, auto-defense
   useEffect(() => {
     if (!activeScenario) {
       if (simRef.current) window.clearInterval(simRef.current);
@@ -92,17 +122,88 @@ const Index = () => {
       return;
     }
     simRef.current = window.setInterval(() => {
-      setContacts((cs) =>
-        cs.map((c) => {
-          const upd = advanceContact(c);
-          return { ...c, ...upd };
-        })
+      const next = contactsRef.current.map((c) =>
+        c.status === "attacking" || (c.status === "engaged" && (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO"))
+          ? { ...c, ...advanceAttacker(c, 1.5) }
+          : { ...c, ...advanceContact(c) }
       );
+      const impacts = next.filter((c) => (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO") && (c.range_nm ?? 99) <= 0.15);
+      const survivors = next.filter((c) => !impacts.includes(c));
+      contactsRef.current = survivors;
+      setContacts(survivors);
+
+      for (const c of impacts) {
+        const dmg = IMPACT_DAMAGE[c.platform_type ?? ""] ?? 15;
+        setStats((s) => ({ ...s, impacts: s.impacts + 1 }));
+        setShip((s) => {
+          const hull = Math.max(0, s.hull_integrity - dmg);
+          if (hull === 0 && s.hull_integrity > 0) {
+            toast.error("☠ BUQUE PERDIDO · fin del ejercicio");
+            setTraining(false);
+          }
+          return {
+            ...s,
+            hull_integrity: hull,
+            propulsion: Math.max(0, s.propulsion - dmg * 0.6),
+            power: Math.max(0, s.power - dmg * 0.5),
+            cms_status: hull < 50 ? "degraded" : s.cms_status,
+          };
+        });
+        if (dmg >= 25) setSensors((ss) => ss.map((s, i) => (i === Math.floor(Math.random() * ss.length) ? { ...s, status: "degraded" } : s)));
+        toast.error(`💥 IMPACTO · ${c.track_id} (${c.platform_type}) −${dmg}% casco`);
+        supabase.from("contacts").delete().eq("id", c.id).then();
+        supabase.from("tactical_events").insert({
+          scenario_id: c.scenario_id, contact_id: null, event_type: "impact", domain: c.domain, severity: "critical",
+          message: `💥 IMPACTO EN PROPIA UNIDAD · ${c.track_id} (${c.platform_type}) · daño ${dmg}%`,
+        }).then();
+      }
+
+      // Auto TEWA only in COND I
+      if (autoRef.current && shipRef.current.alert_level === "red" && shipRef.current.hull_integrity > 0) {
+        const threats = survivors
+          .filter((c) => c.classification === "hostile" && c.status !== "engaged" && !engagedRef.current.has(c.id) && isDetected(c, sensorsRef.current))
+          .sort((a, b) => (a.range_nm ?? 0) - (b.range_nm ?? 0))
+          .slice(0, 3);
+        for (const t of threats) {
+          const w = pickWeapon(t, weaponsRef.current);
+          if (w) fireWeapon(w, t, true);
+        }
+      }
     }, 1500) as unknown as number;
     return () => {
       if (simRef.current) window.clearInterval(simRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeScenario]);
+
+  // Persist positions to backend so other consoles see movement
+  useEffect(() => {
+    if (!activeScenario) return;
+    const id = window.setInterval(() => {
+      contactsRef.current.forEach((c) => {
+        supabase.from("contacts").update({ range_nm: c.range_nm, bearing: c.bearing, heading: c.heading }).eq("id", c.id).then();
+      });
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [activeScenario]);
+
+  // Training: spawn attack waves
+  useEffect(() => {
+    if (!training || !activeScenario) return;
+    const spawn = async () => {
+      const wave = generateAttackWave(activeScenario, difficulty);
+      setStats((s) => ({ ...s, waves: s.waves + 1 }));
+      await supabase.from("contacts").insert(wave);
+      await supabase.from("tactical_events").insert({
+        scenario_id: activeScenario, event_type: "raid", domain: "mixed", severity: "critical",
+        message: `🚨 RAID INBOUND · ${wave.length} amenaza(s): ${wave.map((w) => `${w.track_id} ${w.platform_type}`).join(", ")}`,
+      });
+      toast.error(`🚨 Raid inbound · ${wave.length} amenaza(s)`);
+    };
+    spawn();
+    const id = window.setInterval(spawn, Math.max(8000, 22000 - difficulty * 3500));
+    return () => window.clearInterval(id);
+  }, [training, activeScenario, difficulty]);
 
   const activateScenario = async (id: string) => {
     setActiveScenario(id);
@@ -206,25 +307,33 @@ const Index = () => {
     setEngageOpen(true);
   };
 
-  const fireWeapon = async (w: Weapon, c: Contact) => {
+  const fireWeapon = async (w: Weapon, c: Contact, auto = false) => {
     setEngageOpen(false);
-    // decrement ammo
-    setWeapons((ws) => ws.map((x) => (x.id === w.id ? { ...x, ammo: Math.max(0, x.ammo - (w.type === "ciws" ? 100 : w.type === "gun" ? 8 : 1)) } : x)));
-    await supabase.from("contacts").update({ status: "engaged" }).eq("id", c.id);
+    const cur = weaponsRef.current.find((x) => x.id === w.id);
+    if (!cur || cur.ammo <= 0) { toast.error(`${w.acronym} sin munición`); return; }
+    const prevStatus = c.status;
+    setWeapons((ws) => ws.map((x) => (x.id === w.id ? { ...x, ammo: Math.max(0, x.ammo - ammoCost(w)) } : x)));
+    setContacts((cs) => cs.map((x) => (x.id === c.id ? { ...x, status: "engaged" } : x)));
+    engagedRef.current.add(c.id);
+    supabase.from("contacts").update({ status: "engaged" }).eq("id", c.id).then();
     const tof = ((c.range_nm ?? 0) / Math.max(1, w.speed_kts)) * 3600;
-    await supabase.from("tactical_events").insert({
+    supabase.from("tactical_events").insert({
       scenario_id: c.scenario_id,
       contact_id: c.id,
       event_type: "engagement",
       domain: c.domain,
       severity: "critical",
-      message: `🔥 WEAPONS RELEASE · ${w.acronym} → ${c.track_id} · ToF ${tof.toFixed(1)}s · pk ${Math.round(w.pk * 100)}%`,
-    });
-    toast.error(`${w.acronym} fired @ ${c.track_id}`);
+      message: `🔥 ${auto ? "AUTO-TEWA" : "WEAPONS RELEASE"} · ${w.acronym} → ${c.track_id} · ToF ${tof.toFixed(1)}s · pk ${Math.round(w.pk * 100)}%`,
+    }).then();
+    if (!auto) toast.error(`${w.acronym} fired @ ${c.track_id}`);
 
     setTimeout(async () => {
+      engagedRef.current.delete(c.id);
+      if (!contactsRef.current.some((x) => x.id === c.id)) return; // already impacted/destroyed
       const hit = Math.random() < w.pk;
       if (hit) {
+        setContacts((cs) => cs.filter((x) => x.id !== c.id));
+        setStats((s) => ({ ...s, kills: s.kills + 1 }));
         await supabase.from("contacts").delete().eq("id", c.id);
         await supabase.from("tactical_events").insert({
           scenario_id: c.scenario_id,
@@ -237,7 +346,9 @@ const Index = () => {
         toast.success(`Splash ${c.track_id}`);
         setSelectedId((s) => (s === c.id ? null : s));
       } else {
-        await supabase.from("contacts").update({ status: "tracking" }).eq("id", c.id);
+        const back = prevStatus === "attacking" ? "attacking" : "tracking";
+        setContacts((cs) => cs.map((x) => (x.id === c.id ? { ...x, status: back } : x)));
+        await supabase.from("contacts").update({ status: back }).eq("id", c.id);
         await supabase.from("tactical_events").insert({
           scenario_id: c.scenario_id,
           contact_id: c.id,
@@ -249,6 +360,13 @@ const Index = () => {
         toast.warning(`Miss ${c.track_id} · reattack`);
       }
     }, Math.min(4000, Math.max(800, tof * 100)));
+  };
+
+  const rearm = () => {
+    setWeapons(INITIAL_WEAPONS);
+    setShip((s) => ({ ...INITIAL_SHIP, alert_level: s.alert_level, cms_status: s.cms_status }));
+    setStats({ kills: 0, impacts: 0, waves: 0 });
+    toast.success("Pañoles reabastecidos · daños reparados");
   };
 
   const shadow = async (c: Contact) => {
@@ -327,8 +445,9 @@ const Index = () => {
   const [showWeaponRings, setShowWeaponRings] = useState(true);
   const [viewMode, setViewMode] = useState<"ppi" | "chart">("ppi");
 
-  const selected = useMemo(() => contacts.find((c) => c.id === selectedId) ?? null, [contacts, selectedId]);
-  const filteredContacts = tab === "ALL" ? contacts : contacts.filter((c) => c.domain === tab);
+  const visibleContacts = useMemo(() => contacts.filter((c) => isDetected(c, sensors)), [contacts, sensors]);
+  const selected = useMemo(() => visibleContacts.find((c) => c.id === selectedId) ?? null, [visibleContacts, selectedId]);
+  const filteredContacts = tab === "ALL" ? visibleContacts : visibleContacts.filter((c) => c.domain === tab);
 
   const now = new Date().toLocaleTimeString("es-CO", { hour12: false });
 
@@ -372,8 +491,25 @@ const Index = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
           <aside className="xl:col-span-2 space-y-3">
+            <TrainingPanel
+              training={training}
+              autoDefense={autoDefense}
+              difficulty={difficulty}
+              stats={stats}
+              running={!!activeScenario}
+              onToggleTraining={() => {
+                setTraining((t) => !t);
+                toast[training ? "info" : "error"](training ? "Entrenamiento detenido" : "⚠ ENTRENAMIENTO · Amenazas inbound");
+              }}
+              onToggleAuto={() => setAutoDefense((a) => !a)}
+              onDifficulty={setDifficulty}
+              onRearm={rearm}
+            />
             <ShipStatusPanel ship={ship} onAlertChange={setAlertLevel} />
             <SensorsPanel sensors={sensors} onToggle={toggleSensor} />
+            <div className="hud-panel p-2 text-[10px] font-mono text-muted-foreground">
+              Tracks sostenidos: <span className="text-accent">{visibleContacts.length}</span> / {contacts.length}
+            </div>
           </aside>
 
           <section className="xl:col-span-8">
@@ -501,7 +637,13 @@ const Index = () => {
             <WeaponsPanel
               weapons={weapons}
               filter={tab === "ALL" ? "all" : tab}
-              onSelect={(w) => selected && fireWeapon(w, selected)}
+              onSelect={(w) => {
+                if (!selected) return toast.warning("Seleccione un contacto antes de disparar");
+                if (w.domain !== selected.domain) return toast.warning(`${w.acronym} no aplica a dominio ${selected.domain}`);
+                if (w.ammo <= 0) return toast.error(`${w.acronym} sin munición`);
+                if ((selected.range_nm ?? 0) > w.range_nm) return toast.warning(`${selected.track_id} fuera de alcance (${(selected.range_nm ?? 0).toFixed(1)} > ${w.range_nm} NM)`);
+                fireWeapon(w, selected);
+              }}
             />
           </aside>
         </div>
