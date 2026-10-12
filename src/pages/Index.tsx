@@ -123,6 +123,17 @@ const Index = () => {
       return;
     }
     simRef.current = window.setInterval(() => {
+      // Ship sunk: freeze the exercise and purge any remaining training threats
+      if (shipRef.current.hull_integrity <= 0) {
+        const left = contactsRef.current.filter((c) => (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO"));
+        if (left.length) {
+          const ids = left.map((c) => c.id);
+          contactsRef.current = contactsRef.current.filter((c) => !ids.includes(c.id));
+          setContacts(contactsRef.current);
+          supabase.from("contacts").delete().in("id", ids).then();
+        }
+        return;
+      }
       const next = contactsRef.current.map((c) =>
         c.status === "attacking" || (c.status === "engaged" && (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO"))
           ? { ...c, ...advanceAttacker(c, 1.5) }
@@ -194,6 +205,7 @@ const Index = () => {
   useEffect(() => {
     if (!training || !activeScenario) return;
     const spawn = async () => {
+      if (shipRef.current.hull_integrity <= 0) return;
       const wave = generateAttackWave(activeScenario, difficulty);
       setStats((s) => ({ ...s, waves: s.waves + 1 }));
       await supabase.from("contacts").insert(wave);
@@ -520,6 +532,7 @@ const Index = () => {
               difficulty={difficulty}
               stats={stats}
               running={!!activeScenario}
+              sunk={ship.hull_integrity <= 0}
               onToggleTraining={() => {
                 if (training) return endTraining();
                 if (ship.hull_integrity <= 0) return toast.error("Buque perdido · pulse 'Reabastecer y reparar' primero");
