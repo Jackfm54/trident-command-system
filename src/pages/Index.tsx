@@ -487,7 +487,7 @@ const Index = () => {
           running={!!activeScenario}
         />
 
-        <DomainStatus contacts={contacts} />
+        <DomainStatus contacts={visibleContacts} />
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
           <aside className="xl:col-span-2 space-y-3">
@@ -556,7 +556,7 @@ const Index = () => {
                       <div className="w-full max-w-[820px]">
                         {viewMode === "ppi" ? (
                           <TacticalRadar
-                            contacts={contacts}
+                            contacts={visibleContacts}
                             filterDomain={t.key === "ALL" ? "all" : t.key}
                             selectedId={selectedId}
                             onSelect={setSelectedId}
@@ -568,7 +568,7 @@ const Index = () => {
                           />
                         ) : (
                           <NauticalChart
-                            contacts={contacts}
+                            contacts={visibleContacts}
                             filterDomain={t.key === "ALL" ? "all" : t.key}
                             selectedId={selectedId}
                             onSelect={setSelectedId}
@@ -605,7 +605,7 @@ const Index = () => {
                     </div>
 
                     <VisualIntelPanel
-                      contacts={contacts}
+                      contacts={visibleContacts}
                       onSelectTrack={setSelectedId}
                       onApplyClassification={async (trackId, det) => {
                         const c = contacts.find((x) => x.track_id === trackId);
