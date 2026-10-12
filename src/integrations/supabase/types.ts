@@ -85,30 +85,204 @@ export type Database = {
           },
         ]
       }
-      scenarios: {
+      exercise_commands: {
+        Row: {
+          command_type: string
+          created_at: string
+          created_by: string
+          exercise_id: string
+          id: string
+          payload: Json
+          unit_id: string | null
+        }
+        Insert: {
+          command_type: string
+          created_at?: string
+          created_by: string
+          exercise_id: string
+          id?: string
+          payload?: Json
+          unit_id?: string | null
+        }
+        Update: {
+          command_type?: string
+          created_at?: string
+          created_by?: string
+          exercise_id?: string
+          id?: string
+          payload?: Json
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_commands_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_commands_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_units: {
+        Row: {
+          alert_level: string
+          ammo_pct: number
+          created_at: string
+          exercise_id: string
+          hull_integrity: number
+          id: string
+          impacts: number
+          kills: number
+          name: string
+          power: number
+          propulsion: number
+          scenario_id: string | null
+          shots: number
+          status: string
+          updated_at: string
+          weapons: Json
+        }
+        Insert: {
+          alert_level?: string
+          ammo_pct?: number
+          created_at?: string
+          exercise_id: string
+          hull_integrity?: number
+          id?: string
+          impacts?: number
+          kills?: number
+          name: string
+          power?: number
+          propulsion?: number
+          scenario_id?: string | null
+          shots?: number
+          status?: string
+          updated_at?: string
+          weapons?: Json
+        }
+        Update: {
+          alert_level?: string
+          ammo_pct?: number
+          created_at?: string
+          exercise_id?: string
+          hull_integrity?: number
+          id?: string
+          impacts?: number
+          kills?: number
+          name?: string
+          power?: number
+          propulsion?: number
+          scenario_id?: string | null
+          shots?: number
+          status?: string
+          updated_at?: string
+          weapons?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_units_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_units_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
         Row: {
           created_at: string
-          description: string | null
-          domain: string
+          created_by: string
+          ended_at: string | null
           id: string
           name: string
-          threat_level: string
+          started_at: string | null
+          status: string
         }
         Insert: {
           created_at?: string
-          description?: string | null
-          domain?: string
+          created_by: string
+          ended_at?: string | null
           id?: string
           name: string
-          threat_level?: string
+          started_at?: string | null
+          status?: string
         }
         Update: {
           created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          name?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      scenarios: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          domain: string
+          id: string
+          is_template: boolean
+          name: string
+          threat_level: string
+          threats: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
           description?: string | null
           domain?: string
           id?: string
+          is_template?: boolean
+          name: string
+          threat_level?: string
+          threats?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          domain?: string
+          id?: string
+          is_template?: boolean
           name?: string
           threat_level?: string
+          threats?: Json
         }
         Relationships: []
       }
@@ -163,15 +337,83 @@ export type Database = {
           },
         ]
       }
+      unit_members: {
+        Row: {
+          created_at: string
+          id: string
+          station: string
+          unit_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          station?: string
+          unit_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          station?: string
+          unit_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_members_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_unit_member: {
+        Args: { _unit_id: string; _user_id: string }
+        Returns: boolean
+      }
+      set_user_role: {
+        Args: {
+          _grant: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "instructor" | "operator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -298,6 +540,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["instructor", "operator"],
+    },
   },
 } as const
