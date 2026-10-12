@@ -7,18 +7,24 @@ interface Props {
   difficulty: number;
   stats: { kills: number; impacts: number; waves: number };
   running: boolean;
+  sunk?: boolean;
   onToggleTraining: () => void;
   onToggleAuto: () => void;
   onDifficulty: (d: number) => void;
   onRearm: () => void;
 }
 
-export function TrainingPanel({ training, autoDefense, difficulty, stats, running, onToggleTraining, onToggleAuto, onDifficulty, onRearm }: Props) {
+export function TrainingPanel({ training, autoDefense, difficulty, stats, running, sunk, onToggleTraining, onToggleAuto, onDifficulty, onRearm }: Props) {
   return (
     <div className="hud-panel p-3 space-y-2">
       <h3 className="font-display text-xs text-primary uppercase tracking-wider">Modo Entrenamiento</h3>
-      <Button size="sm" disabled={!running} variant={training ? "destructive" : "default"} className="w-full font-mono text-xs" onClick={onToggleTraining}>
-        <Swords className="w-3.5 h-3.5 mr-1" /> {training ? "Detener ataque" : "Iniciar ataque"}
+      {sunk && (
+        <div className="border border-destructive bg-destructive/20 p-2 text-center font-mono text-[11px] text-destructive animate-blink-alert">
+          ☠ BUQUE HUNDIDO · EJERCICIO DETENIDO
+        </div>
+      )}
+      <Button size="sm" disabled={!running || (sunk && !training)} variant={training ? "destructive" : "default"} className="w-full font-mono text-xs" onClick={onToggleTraining}>
+        <Swords className="w-3.5 h-3.5 mr-1" /> {training ? "Detener entrenamiento" : sunk ? "Repare para reiniciar" : "Iniciar ataque"}
       </Button>
       {!running && <p className="text-[10px] font-mono text-muted-foreground">Active un escenario primero.</p>}
       <Button size="sm" variant={autoDefense ? "default" : "outline"} className="w-full font-mono text-xs" onClick={onToggleAuto}>
