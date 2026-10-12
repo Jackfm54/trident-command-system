@@ -159,7 +159,7 @@ const Index = () => {
 
   // Load scenarios once
   useEffect(() => {
-    supabase.from("scenarios").select("*").order("created_at").then(({ data }) => {
+    supabase.from("scenarios").select("*").eq("is_template", true).order("created_at").then(({ data }) => {
       if (data) setScenarios(data as Scenario[]);
     });
   }, []);
