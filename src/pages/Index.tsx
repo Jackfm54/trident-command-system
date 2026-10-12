@@ -165,11 +165,6 @@ const Index = () => {
         if (cmd.command_type === "fire" && cmd.payload?.executed) {
           setWeapons((ws) => ws.map((x) => (x.id === cmd.payload.weapon_id ? { ...x, ammo: Math.max(0, x.ammo - (cmd.payload.cost ?? 1)) } : x)));
           setStats((s) => ({ ...s, shots: s.shots + 1 }));
-    const notify = (type: "fire" | "kill", payload: any) => {
-      if (isCommandRef.current || !link || !unit) return;
-      supabase.from("exercise_commands").insert({ exercise_id: unit.exercise_id, unit_id: link.unitId, command_type: type, payload, created_by: user!.id }).then();
-    };
-    notify("fire", { executed: true, weapon_id: w.id, cost: ammoCost(w), contact_id: c.id });
           return;
         }
         if (cmd.command_type === "fire") {
@@ -496,6 +491,11 @@ const Index = () => {
     if (!cur || cur.ammo <= 0) { toast.error(`${w.acronym} sin munición`); return; }
     const prevStatus = c.status;
     setStats((s) => ({ ...s, shots: s.shots + 1 }));
+    const notify = (type: "fire" | "kill", payload: any) => {
+      if (isCommandRef.current || !link || !unit) return;
+      supabase.from("exercise_commands").insert({ exercise_id: unit.exercise_id, unit_id: link.unitId, command_type: type, payload, created_by: user!.id }).then();
+    };
+    notify("fire", { executed: true, weapon_id: w.id, cost: ammoCost(w), contact_id: c.id });
     setWeapons((ws) => ws.map((x) => (x.id === w.id ? { ...x, ammo: Math.max(0, x.ammo - ammoCost(w)) } : x)));
     setContacts((cs) => cs.map((x) => (x.id === c.id ? { ...x, status: "engaged" } : x)));
     engagedRef.current.add(c.id);
