@@ -399,6 +399,7 @@ const Index = () => {
 
   const rearm = () => {
     setWeapons(INITIAL_WEAPONS);
+    setSensors(INITIAL_SENSORS);
     setShip((s) => ({ ...INITIAL_SHIP, alert_level: s.alert_level, cms_status: s.cms_status }));
     setStats({ kills: 0, impacts: 0, waves: 0 });
     toast.success("Pañoles reabastecidos · daños reparados");
@@ -457,7 +458,8 @@ const Index = () => {
   const toggleSensor = (id: string) => {
     setSensors((ss) => ss.map((s) => {
       if (s.id !== id) return s;
-      const next = s.status === "online" ? "standby" : s.status === "standby" ? "online" : s.status;
+      const next = s.status === "online" ? "standby" : "online";
+      if (s.status === "degraded" || s.status === "offline") toast.success(`${s.acronym} reparado · en servicio`);
       return { ...s, status: next };
     }));
   };
