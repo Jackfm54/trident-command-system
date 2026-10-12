@@ -41,7 +41,7 @@ export function TacticalRadar({
   const trailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
   const [, force] = useState(0);
 
-  const filtered = contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain);
+  const filtered = contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain || c.status === "fleet" || c.status === "sunk");
   const scale = 195 / rangeNm; // px per nm
 
   // Update trails every time contacts change

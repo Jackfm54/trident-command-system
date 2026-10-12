@@ -96,7 +96,7 @@ export function NauticalChart({
   const showWeaponRings = localShowRings;
 
   const filtered = useMemo(
-    () => contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain),
+    () => contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain || c.status === "fleet" || c.status === "sunk"),
     [contacts, filterDomain]
   );
 

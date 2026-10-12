@@ -22,6 +22,13 @@
       "when": 1791824383951,
       "tag": "0002_integrated_fleet",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791828917458,
+      "tag": "0003_station_commands",
+      "breakpoints": true
     }
   ]
 }
