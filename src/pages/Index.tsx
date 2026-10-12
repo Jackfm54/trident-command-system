@@ -18,6 +18,10 @@ import { EngagementDialog } from "@/components/tactical/EngagementDialog";
 import { VisualIntelPanel } from "@/components/tactical/VisualIntelPanel";
 import { toast } from "sonner";
 import { TrainingPanel } from "@/components/tactical/TrainingPanel";
+import { UnitLinkBar, UnitLink } from "@/components/tactical/UnitLinkBar";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
+import { attackerSeed } from "@/lib/combatEngine";
 import { isDetected, advanceAttacker, IMPACT_DAMAGE, generateAttackWave, pickWeapon, ammoCost } from "@/lib/combatEngine";
 
 function load<T>(key: string, fallback: T): T {
@@ -54,7 +58,19 @@ const Index = () => {
   const [training, setTraining] = useState(false);
   const [autoDefense, setAutoDefense] = useState(false);
   const [difficulty, setDifficulty] = useState(2);
-  const [stats, setStats] = useState({ kills: 0, impacts: 0, waves: 0 });
+  const [stats, setStats] = useState({ kills: 0, impacts: 0, waves: 0, shots: 0 });
+  const { user, isInstructor, signOut } = useAuth();
+  const [link, setLink] = useState<UnitLink | null>(() => load<UnitLink | null>("tcm.link", null));
+  const [unit, setUnit] = useState<any>(null);
+  const [unitScenario, setUnitScenario] = useState<Scenario | null>(null);
+  const [exerciseName, setExerciseName] = useState("");
+  const isCommand = !link || link.station === "command";
+  const isCommandRef = useRef(isCommand);
+  isCommandRef.current = isCommand;
+  const fireRef = useRef<(w: Weapon, c: Contact, auto?: boolean) => void>(() => {});
+  const rearmRef = useRef<() => void>(() => {});
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
   const simRef = useRef<number | null>(null);
   const contactsRef = useRef<Contact[]>([]);
   const weaponsRef = useRef(weapons);
@@ -72,6 +88,74 @@ const Index = () => {
   useEffect(() => { localStorage.setItem("tcm.sensors", JSON.stringify(sensors)); }, [sensors]);
   useEffect(() => { localStorage.setItem("tcm.weapons", JSON.stringify(weapons)); }, [weapons]);
   useEffect(() => { localStorage.setItem("tcm.ship", JSON.stringify(ship)); }, [ship]);
+  useEffect(() => { localStorage.setItem("tcm.link", JSON.stringify(link)); }, [link]);
+
+  // ===== Exercise link: load unit, follow its scenario, sync state =====
+  useEffect(() => {
+    if (!link) { setUnit(null); setUnitScenario(null); return; }
+    let alive = true;
+    (async () => {
+      const { data: u } = await supabase.from("exercise_units").select("*").eq("id", link.unitId).maybeSingle();
+      if (!alive) return;
+      if (!u) { setLink(null); toast.error("El buque ya no existe en el ejercicio"); return; }
+      setUnit(u);
+      const [{ data: ex }, { data: scn }] = await Promise.all([
+        supabase.from("exercises").select("name").eq("id", u.exercise_id).maybeSingle(),
+        u.scenario_id ? supabase.from("scenarios").select("*").eq("id", u.scenario_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      setExerciseName(ex?.name ?? "");
+      if (scn) setUnitScenario(scn as Scenario);
+      if (u.scenario_id) setActiveScenario(u.scenario_id);
+      const st = link.station;
+      setTab(st === "aaw" ? "air" : st === "asuw" ? "surface" : st === "asw" ? "subsurface" : st === "ew" ? "electronic" : "ALL");
+    })();
+    const ch = supabase
+      .channel(`unit-${link.unitId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "exercise_units", filter: `id=eq.${link.unitId}` }, (p) => {
+        if (p.eventType === "DELETE") { setLink(null); toast.error("El instructor retiró este buque"); return; }
+        const u = p.new as any;
+        setUnit(u);
+        if (!isCommandRef.current) {
+          setShip((s) => ({ ...s, hull_integrity: Number(u.hull_integrity), propulsion: Number(u.propulsion), power: Number(u.power), alert_level: u.alert_level }));
+          if (Array.isArray(u.weapons) && u.weapons.length) setWeapons(u.weapons);
+          setStats((s) => ({ ...s, kills: u.kills, impacts: u.impacts, shots: u.shots }));
+        }
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "exercise_commands" }, (p) => {
+        const cmd = p.new as any;
+        if (cmd.unit_id && cmd.unit_id !== link.unitId) return;
+        if (cmd.command_type === "start") toast.success("📡 El instructor inició el ejercicio");
+        if (cmd.command_type === "end") { toast.info("🏁 El instructor finalizó el ejercicio"); endTrainingRef.current(); }
+        if (cmd.command_type === "raid") toast.error("🚨 RAID ordenado por el instructor");
+        if (!isCommandRef.current) return;
+        if (cmd.command_type === "reset") rearmRef.current();
+        if (cmd.command_type === "fire") {
+          const w = weaponsRef.current.find((x) => x.id === cmd.payload?.weapon_id);
+          const c = contactsRef.current.find((x) => x.id === cmd.payload?.contact_id);
+          if (w && c) fireRef.current(w, c);
+        }
+      })
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [link?.unitId, link?.station]);
+
+  // Command station publishes ship state for the instructor and other stations
+  useEffect(() => {
+    if (!link || !isCommand) return;
+    const id = window.setInterval(() => {
+      const s = shipRef.current;
+      const ws = weaponsRef.current;
+      const ammo_pct = (ws.reduce((a, w) => a + w.ammo / w.max_ammo, 0) / ws.length) * 100;
+      const st = statsRef.current;
+      const status = s.hull_integrity <= 0 ? "sunk" : s.hull_integrity < 25 || s.propulsion <= 0 || ammo_pct <= 1 ? "out_of_action" : "active";
+      supabase.from("exercise_units").update({
+        hull_integrity: s.hull_integrity, propulsion: s.propulsion, power: s.power, alert_level: s.alert_level,
+        kills: st.kills, impacts: st.impacts, shots: st.shots, ammo_pct, weapons: ws as any, status, updated_at: new Date().toISOString(),
+      }).eq("id", link.unitId).then();
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, [link?.unitId, isCommand]);
 
   // Load scenarios once
   useEffect(() => {
@@ -123,6 +207,7 @@ const Index = () => {
       return;
     }
     simRef.current = window.setInterval(() => {
+      if (!isCommandRef.current) return;
       // Ship sunk: freeze the exercise and purge any remaining training threats
       if (shipRef.current.hull_integrity <= 0) {
         const left = contactsRef.current.filter((c) => (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO"));
@@ -194,12 +279,13 @@ const Index = () => {
   useEffect(() => {
     if (!activeScenario) return;
     const id = window.setInterval(() => {
+      if (!isCommandRef.current) return;
       contactsRef.current.forEach((c) => {
         supabase.from("contacts").update({ range_nm: c.range_nm, bearing: c.bearing, heading: c.heading }).eq("id", c.id).then();
       });
-    }, 6000);
+    }, link ? 2000 : 6000);
     return () => window.clearInterval(id);
-  }, [activeScenario]);
+  }, [activeScenario, link]);
 
   // Training: spawn attack waves
   useEffect(() => {
@@ -226,12 +312,17 @@ const Index = () => {
     // Clear previous contacts for this scenario
     await supabase.from("contacts").delete().eq("scenario_id", id);
     await supabase.from("tactical_events").delete().eq("scenario_id", id);
-    const scn = scenarios.find((s) => s.id === id);
+    const scn = [...scenarios, ...(unitScenario ? [unitScenario] : [])].find((s) => s.id === id);
     const dom = (scn?.domain && scn.domain !== "mixed" ? (scn.domain as Domain) : undefined);
     const isDroneSwarm = scn?.name?.toLowerCase().includes("enjambre");
     const count = scn?.threat_level === "critical" ? 8 : scn?.threat_level === "high" ? 6 : 4;
     let seeds;
-    if (isDroneSwarm) {
+    const custom = Array.isArray((scn as any)?.threats) ? ((scn as any).threats as { platform: string; domain: Domain; count: number; hostile: boolean }[]) : [];
+    if (custom.length) {
+      seeds = custom.flatMap((t) => Array.from({ length: Math.min(20, t.count) }, () =>
+        (t.hostile && attackerSeed(id, t.platform)) || { ...generateRandomContact(id, t.domain), domain: t.domain, platform_type: t.platform }
+      ));
+    } else if (isDroneSwarm) {
       seeds = [
         ...Array.from({ length: 3 }, () => ({ ...generateRandomContact(id, "air"), platform_type: "uav-kamikaze" })),
         ...Array.from({ length: 2 }, () => ({ ...generateRandomContact(id, "air"), platform_type: "loitering-munition" })),
@@ -328,6 +419,7 @@ const Index = () => {
     const cur = weaponsRef.current.find((x) => x.id === w.id);
     if (!cur || cur.ammo <= 0) { toast.error(`${w.acronym} sin munición`); return; }
     const prevStatus = c.status;
+    setStats((s) => ({ ...s, shots: s.shots + 1 }));
     setWeapons((ws) => ws.map((x) => (x.id === w.id ? { ...x, ammo: Math.max(0, x.ammo - ammoCost(w)) } : x)));
     setContacts((cs) => cs.map((x) => (x.id === c.id ? { ...x, status: "engaged" } : x)));
     engagedRef.current.add(c.id);
@@ -401,8 +493,24 @@ const Index = () => {
     setWeapons(INITIAL_WEAPONS);
     setSensors(INITIAL_SENSORS);
     setShip((s) => ({ ...INITIAL_SHIP, alert_level: s.alert_level, cms_status: s.cms_status }));
-    setStats({ kills: 0, impacts: 0, waves: 0 });
+    setStats({ kills: 0, impacts: 0, waves: 0, shots: 0 });
     toast.success("Pañoles reabastecidos · daños reparados");
+  };
+
+  fireRef.current = fireWeapon;
+  rearmRef.current = rearm;
+
+  // Any station may request fire; the command station executes it so ammo stays consistent
+  const requestFire = async (w: Weapon, c: Contact) => {
+    if (isCommand) return fireWeapon(w, c);
+    setEngageOpen(false);
+    const myDomain = link?.station === "aaw" ? "air" : link?.station === "asuw" ? "surface" : link?.station === "asw" ? "subsurface" : "electronic";
+    if (w.domain !== myDomain) return toast.warning("Su puesto solo controla las armas de su guerra");
+    const { error } = await supabase.from("exercise_commands").insert({
+      exercise_id: unit.exercise_id, unit_id: link!.unitId, command_type: "fire", payload: { weapon_id: w.id, contact_id: c.id }, created_by: user!.id,
+    });
+    if (error) return toast.error(error.message);
+    toast.success(`Orden de fuego ${w.acronym} → ${c.track_id} enviada al Mando`);
   };
 
   const shadow = async (c: Contact) => {
@@ -465,6 +573,7 @@ const Index = () => {
   };
 
   const setAlertLevel = async (lvl: ShipSystem["alert_level"]) => {
+    if (!isCommand) { toast.warning("Solo el puesto de Mando cambia la condición"); return; }
     setShip((s) => ({ ...s, alert_level: lvl, cms_status: lvl === "red" ? "battle" : lvl === "yellow" ? "degraded" : "nominal" }));
     if (activeScenario) {
       await supabase.from("tactical_events").insert({
@@ -502,6 +611,12 @@ const Index = () => {
             </div>
           </div>
           <div className="flex items-center gap-4 font-mono text-xs">
+            {user && (
+              <UnitLinkBar userId={user.id} link={link} unitName={unit?.name} exerciseName={exerciseName}
+                onLink={(l) => { setLink(l); if (!l) { setActiveScenario(null); setTab("ALL"); } }} />
+            )}
+            {isInstructor && <Link to="/master" className="text-primary hover:underline">Puesto Maestro</Link>}
+            <button onClick={signOut} className="text-muted-foreground hover:text-accent">Salir</button>
             <div className="text-muted-foreground">
               UTC <span className="text-foreground">{now}</span>
             </div>
@@ -514,21 +629,27 @@ const Index = () => {
       </header>
 
       <main className="container py-4 space-y-3">
-        <ScenarioBar
-          scenarios={scenarios}
+        {link && unit?.status === "sunk" && (
+          <div className="hud-panel p-2 text-center font-mono text-xs text-destructive border-destructive animate-blink-alert">☠ {unit.name} HUNDIDO · FUERA DEL EJERCICIO</div>
+        )}
+        {link && !isCommand && (
+          <div className="hud-panel p-2 font-mono text-[11px] text-muted-foreground">Puesto subordinado · la simulación la controla el puesto de Mando de {unit?.name}. Sus órdenes de fuego se envían al Mando.</div>
+        )}
+        {isCommand && <ScenarioBar
+          scenarios={link ? (unitScenario ? [unitScenario] : []) : scenarios}
           activeId={activeScenario}
           onActivate={activateScenario}
           onStop={stop}
           onAddContact={addManualContact}
           onClassifyAll={classifyAll}
           running={!!activeScenario}
-        />
+        />}
 
         <DomainStatus contacts={visibleContacts} />
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
           <aside className="xl:col-span-2 space-y-3">
-            <TrainingPanel
+            {isCommand && <TrainingPanel
               training={training}
               autoDefense={autoDefense}
               difficulty={difficulty}
@@ -544,7 +665,7 @@ const Index = () => {
               onToggleAuto={() => setAutoDefense((a) => !a)}
               onDifficulty={setDifficulty}
               onRearm={rearm}
-            />
+            />}
             <ShipStatusPanel ship={ship} onAlertChange={setAlertLevel} />
             <SensorsPanel sensors={sensors} onToggle={toggleSensor} />
             <div className="hud-panel p-2 text-[10px] font-mono text-muted-foreground">
@@ -682,7 +803,7 @@ const Index = () => {
                 if (w.domain !== selected.domain) return toast.warning(`${w.acronym} no aplica a dominio ${selected.domain}`);
                 if (w.ammo <= 0) return toast.error(`${w.acronym} sin munición`);
                 if ((selected.range_nm ?? 0) > w.range_nm) return toast.warning(`${selected.track_id} fuera de alcance (${(selected.range_nm ?? 0).toFixed(1)} > ${w.range_nm} NM)`);
-                fireWeapon(w, selected);
+                requestFire(w, selected);
               }}
             />
           </aside>
@@ -693,7 +814,7 @@ const Index = () => {
           contact={engageContact}
           weapons={weapons}
           onClose={() => setEngageOpen(false)}
-          onFire={fireWeapon}
+          onFire={requestFire}
         />
 
         <footer className="text-center text-[10px] font-mono uppercase tracking-[0.3em] text-muted-foreground pt-4">
