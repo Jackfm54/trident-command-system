@@ -21,7 +21,7 @@ import { TrainingPanel } from "@/components/tactical/TrainingPanel";
 import { UnitLinkBar, UnitLink } from "@/components/tactical/UnitLinkBar";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
-import { attackerSeed } from "@/lib/combatEngine";
+import { attackerSeed, relativeTo, advanceToward } from "@/lib/combatEngine";
 import { isDetected, advanceAttacker, IMPACT_DAMAGE, generateAttackWave, pickWeapon, ammoCost } from "@/lib/combatEngine";
 
 function load<T>(key: string, fallback: T): T {
@@ -69,10 +69,21 @@ const Index = () => {
   isCommandRef.current = isCommand;
   const fireRef = useRef<(w: Weapon, c: Contact, auto?: boolean) => void>(() => {});
   const rearmRef = useRef<() => void>(() => {});
+  const [exercise, setExercise] = useState<any>(null);
+  const [fleet, setFleet] = useState<any[]>([]);
+  const integrated = exercise?.mode === "integrated";
+  const integratedRef = useRef(false);
+  integratedRef.current = integrated;
+  const fleetRef = useRef<any[]>([]);
+  fleetRef.current = fleet;
+  const ownRef = useRef({ x: 0, y: 0 });
+  ownRef.current = { x: Number(unit?.pos_x_nm ?? 0), y: Number(unit?.pos_y_nm ?? 0) };
+  const applyImpactRef = useRef<(c: { track_id: string; platform_type: string | null; domain: string; scenario_id: string | null; id?: string }, local: boolean) => void>(() => {});
   const statsRef = useRef(stats);
   statsRef.current = stats;
   const simRef = useRef<number | null>(null);
   const contactsRef = useRef<Contact[]>([]);
+  const displayRef = useRef<Contact[]>([]);
   const weaponsRef = useRef(weapons);
   const sensorsRef = useRef(sensors);
   const shipRef = useRef(ship);
@@ -108,7 +119,7 @@ const Index = () => {
 
   // ===== Exercise link: load unit, follow its scenario, sync state =====
   useEffect(() => {
-    if (!link) { setUnit(null); setUnitScenario(null); return; }
+    if (!link) { setUnit(null); setUnitScenario(null); setExercise(null); setFleet([]); return; }
     let alive = true;
     (async () => {
       const { data: u } = await supabase.from("exercise_units").select("*").eq("id", link.unitId).maybeSingle();
@@ -116,12 +127,14 @@ const Index = () => {
       if (!u) { setLink(null); toast.error("El buque ya no existe en el ejercicio"); return; }
       setUnit(u);
       const [{ data: ex }, { data: scn }] = await Promise.all([
-        supabase.from("exercises").select("name").eq("id", u.exercise_id).maybeSingle(),
+        supabase.from("exercises").select("*").eq("id", u.exercise_id).maybeSingle(),
         u.scenario_id ? supabase.from("scenarios").select("*").eq("id", u.scenario_id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       setExerciseName(ex?.name ?? "");
+      setExercise(ex);
       if (scn) setUnitScenario(scn as Scenario);
-      if (u.scenario_id) setActiveScenario(u.scenario_id);
+      if (ex?.mode === "integrated" && ex.scenario_id) setActiveScenario(ex.scenario_id);
+      else if (u.scenario_id) setActiveScenario(u.scenario_id);
       const st = link.station;
       setTab(st === "aaw" ? "air" : st === "asuw" ? "surface" : st === "asw" ? "subsurface" : st === "ew" ? "electronic" : "ALL");
     })();
@@ -145,9 +158,10 @@ const Index = () => {
         if (cmd.command_type === "raid") toast.error("🚨 RAID ordenado por el instructor");
         if (!isCommandRef.current) return;
         if (cmd.command_type === "reset") rearmRef.current();
+        if (cmd.command_type === "impact" && cmd.payload) applyImpactRef.current(cmd.payload, false);
         if (cmd.command_type === "fire") {
           const w = weaponsRef.current.find((x) => x.id === cmd.payload?.weapon_id);
-          const c = contactsRef.current.find((x) => x.id === cmd.payload?.contact_id);
+          const c = displayRef.current.find((x) => x.id === cmd.payload?.contact_id);
           if (w && c) fireRef.current(w, c);
         }
       })
@@ -155,6 +169,17 @@ const Index = () => {
     return () => { alive = false; supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [link?.unitId, link?.station]);
+
+  // Integrated exercise: follow every ship of the fleet (positions + status)
+  useEffect(() => {
+    if (!exercise?.id || exercise.mode !== "integrated") { setFleet([]); return; }
+    const load = () => supabase.from("exercise_units").select("*").eq("exercise_id", exercise.id).then(({ data }) => setFleet(data ?? []));
+    load();
+    const ch = supabase.channel(`fleet-${exercise.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "exercise_units", filter: `exercise_id=eq.${exercise.id}` }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [exercise?.id, exercise?.mode]);
 
   // Command station publishes ship state for the instructor and other stations
   useEffect(() => {
@@ -215,6 +240,50 @@ const Index = () => {
     };
   }, [activeScenario]);
 
+  const applyImpact = (c: { track_id: string; platform_type: string | null; domain: string; scenario_id: string | null; id?: string }, local: boolean) => {
+    if (shipRef.current.hull_integrity <= 0) return;
+    const dmg = IMPACT_DAMAGE[c.platform_type ?? ""] ?? 15;
+    setStats((s) => ({ ...s, impacts: s.impacts + 1 }));
+    const s0 = shipRef.current;
+    const hull = Math.max(0, s0.hull_integrity - dmg);
+    const nextShip: ShipSystem = {
+      ...s0,
+      hull_integrity: hull,
+      propulsion: Math.max(0, s0.propulsion - dmg * 0.6),
+      power: Math.max(0, s0.power - dmg * 0.5),
+      cms_status: hull < 50 ? "degraded" : s0.cms_status,
+    };
+    shipRef.current = nextShip;
+    setShip(nextShip);
+    if (hull === 0) {
+      toast.error("☠ BUQUE PERDIDO · fin del ejercicio. Pulse 'Reabastecer y reparar' para reiniciar.");
+      endTrainingRef.current(true);
+    }
+    if (dmg >= 25) setSensors((ss) => ss.map((s, i) => (i === Math.floor(Math.random() * ss.length) ? { ...s, status: "degraded" } : s)));
+    toast.error(`💥 IMPACTO · ${c.track_id} (${c.platform_type}) −${dmg}% casco`);
+    if (local && c.id) {
+      supabase.from("contacts").delete().eq("id", c.id).then();
+      supabase.from("tactical_events").insert({
+        scenario_id: c.scenario_id, contact_id: null, event_type: "impact", domain: c.domain, severity: "critical",
+        message: `💥 IMPACTO EN PROPIA UNIDAD · ${c.track_id} (${c.platform_type}) · daño ${dmg}%`,
+      }).then();
+    }
+  };
+  applyImpactRef.current = applyImpact;
+
+  // Auto TEWA only in COND I; list must be expressed relative to own ship
+  const runAutoDefense = (list: Contact[]) => {
+    if (!(autoRef.current && shipRef.current.alert_level === "red" && shipRef.current.hull_integrity > 0)) return;
+    const threats = list
+      .filter((c) => c.classification === "hostile" && c.status !== "engaged" && !engagedRef.current.has(c.id) && isDetected(c, sensorsRef.current))
+      .sort((a, b) => (a.range_nm ?? 0) - (b.range_nm ?? 0))
+      .slice(0, 3);
+    for (const t of threats) {
+      const w = pickWeapon(t, weaponsRef.current);
+      if (w) fireRef.current(w, t, true);
+    }
+  };
+
   // Simulation loop — kinematics, attacker homing, impacts, auto-defense
   useEffect(() => {
     if (!activeScenario) {
@@ -223,6 +292,19 @@ const Index = () => {
       return;
     }
     simRef.current = window.setInterval(() => {
+      if (integratedRef.current) {
+        // Shared sea: smooth local motion only; the instructor station is authoritative (persists + resolves impacts)
+        const units = fleetRef.current;
+        const next = contactsRef.current.map((c) => {
+          const t = c.target_unit_id ? units.find((u) => u.id === c.target_unit_id) : null;
+          if (t && (c.status === "attacking" || c.status === "engaged")) return { ...c, ...advanceToward(c, Number(t.pos_x_nm), Number(t.pos_y_nm), 1.5) };
+          return { ...c, ...advanceContact(c) };
+        });
+        contactsRef.current = next;
+        setContacts(next);
+        if (isCommandRef.current) runAutoDefense(next.map((c) => relativeTo(c, ownRef.current.x, ownRef.current.y)));
+        return;
+      }
       if (!isCommandRef.current) return;
       // Ship sunk: freeze the exercise and purge any remaining training threats
       if (shipRef.current.hull_integrity <= 0) {
@@ -245,45 +327,9 @@ const Index = () => {
       contactsRef.current = survivors;
       setContacts(survivors);
 
-      for (const c of impacts) {
-        if (shipRef.current.hull_integrity <= 0) break;
-        const dmg = IMPACT_DAMAGE[c.platform_type ?? ""] ?? 15;
-        setStats((s) => ({ ...s, impacts: s.impacts + 1 }));
-        const s0 = shipRef.current;
-        const hull = Math.max(0, s0.hull_integrity - dmg);
-        const nextShip: ShipSystem = {
-          ...s0,
-          hull_integrity: hull,
-          propulsion: Math.max(0, s0.propulsion - dmg * 0.6),
-          power: Math.max(0, s0.power - dmg * 0.5),
-          cms_status: hull < 50 ? "degraded" : s0.cms_status,
-        };
-        shipRef.current = nextShip;
-        setShip(nextShip);
-        if (hull === 0) {
-          toast.error("☠ BUQUE PERDIDO · fin del ejercicio. Pulse 'Reabastecer y reparar' para reiniciar.");
-          endTrainingRef.current(true);
-        }
-        if (dmg >= 25) setSensors((ss) => ss.map((s, i) => (i === Math.floor(Math.random() * ss.length) ? { ...s, status: "degraded" } : s)));
-        toast.error(`💥 IMPACTO · ${c.track_id} (${c.platform_type}) −${dmg}% casco`);
-        supabase.from("contacts").delete().eq("id", c.id).then();
-        supabase.from("tactical_events").insert({
-          scenario_id: c.scenario_id, contact_id: null, event_type: "impact", domain: c.domain, severity: "critical",
-          message: `💥 IMPACTO EN PROPIA UNIDAD · ${c.track_id} (${c.platform_type}) · daño ${dmg}%`,
-        }).then();
-      }
+      for (const c of impacts) applyImpactRef.current(c, true);
 
-      // Auto TEWA only in COND I
-      if (autoRef.current && shipRef.current.alert_level === "red" && shipRef.current.hull_integrity > 0) {
-        const threats = survivors
-          .filter((c) => c.classification === "hostile" && c.status !== "engaged" && !engagedRef.current.has(c.id) && isDetected(c, sensorsRef.current))
-          .sort((a, b) => (a.range_nm ?? 0) - (b.range_nm ?? 0))
-          .slice(0, 3);
-        for (const t of threats) {
-          const w = pickWeapon(t, weaponsRef.current);
-          if (w) fireWeapon(w, t, true);
-        }
-      }
+      runAutoDefense(survivors);
     }, 1500) as unknown as number;
     return () => {
       if (simRef.current) window.clearInterval(simRef.current);
@@ -295,7 +341,7 @@ const Index = () => {
   useEffect(() => {
     if (!activeScenario) return;
     const id = window.setInterval(() => {
-      if (!isCommandRef.current) return;
+      if (!isCommandRef.current || integratedRef.current) return;
       contactsRef.current.forEach((c) => {
         supabase.from("contacts").update({ range_nm: c.range_nm, bearing: c.bearing, heading: c.heading }).eq("id", c.id).then();
       });
@@ -432,6 +478,7 @@ const Index = () => {
   const fireWeapon = async (w: Weapon, c: Contact, auto = false) => {
     setEngageOpen(false);
     if (shipRef.current.hull_integrity <= 0) { if (!auto) toast.error("Buque perdido · sistemas de armas inoperativos"); return; }
+    if (c.status === "fleet" || c.status === "sunk") { toast.warning("Unidad propia de la flota · fuego bloqueado"); return; }
     const cur = weaponsRef.current.find((x) => x.id === w.id);
     if (!cur || cur.ammo <= 0) { toast.error(`${w.acronym} sin munición`); return; }
     const prevStatus = c.status;
@@ -607,7 +654,23 @@ const Index = () => {
   const [showWeaponRings, setShowWeaponRings] = useState(true);
   const [viewMode, setViewMode] = useState<"ppi" | "chart">("ppi");
 
-  const visibleContacts = useMemo(() => contacts.filter((c) => isDetected(c, sensors)), [contacts, sensors]);
+  const displayContacts = useMemo<Contact[]>(() => {
+    if (!integrated) return contacts;
+    const { x, y } = { x: Number(unit?.pos_x_nm ?? 0), y: Number(unit?.pos_y_nm ?? 0) };
+    const local = contacts.map((c) => relativeTo(c, x, y));
+    const ships = fleet.filter((u) => u.id !== unit?.id).map((u) => {
+      const rel = relativeTo({ range_nm: Math.hypot(Number(u.pos_x_nm), Number(u.pos_y_nm)), bearing: ((Math.atan2(Number(u.pos_x_nm), Number(u.pos_y_nm)) * 180) / Math.PI + 360) % 360 }, x, y);
+      return {
+        id: `unit-${u.id}`, scenario_id: exercise?.scenario_id ?? null, track_id: u.name, domain: "surface", classification: "friend",
+        platform_type: u.status === "sunk" ? "frigate · HUNDIDO" : "frigate · FLOTA", bearing: rel.bearing, range_nm: rel.range_nm,
+        speed_kts: 0, altitude_ft: 0, heading: 0, ai_confidence: 1, ai_reasoning: `Unidad propia de la flota · casco ${Math.round(Number(u.hull_integrity))}%`,
+        status: u.status === "sunk" ? "sunk" : "fleet", created_at: u.created_at, updated_at: u.updated_at,
+      } as Contact;
+    });
+    return [...local, ...ships];
+  }, [contacts, integrated, fleet, unit?.id, unit?.pos_x_nm, unit?.pos_y_nm, exercise?.scenario_id]);
+  displayRef.current = displayContacts;
+  const visibleContacts = useMemo(() => displayContacts.filter((c) => c.status === "fleet" || c.status === "sunk" || isDetected(c, sensors)), [displayContacts, sensors]);
   const selected = useMemo(() => visibleContacts.find((c) => c.id === selectedId) ?? null, [visibleContacts, selectedId]);
   const filteredContacts = tab === "ALL" ? visibleContacts : visibleContacts.filter((c) => c.domain === tab);
 
@@ -651,7 +714,10 @@ const Index = () => {
         {link && !isCommand && (
           <div className="hud-panel p-2 font-mono text-[11px] text-muted-foreground">Puesto subordinado · la simulación la controla el puesto de Mando de {unit?.name}. Sus órdenes de fuego se envían al Mando.</div>
         )}
-        {isCommand && <ScenarioBar
+        {link && integrated && (
+          <div className="hud-panel p-2 font-mono text-[11px] text-accent">Ejercicio INTEGRADO · {fleet.length} buques en el mismo mar · las amenazas las lanza el instructor. Puede defender a otros buques si la amenaza está a su alcance.</div>
+        )}
+        {isCommand && !integrated && <ScenarioBar
           scenarios={link ? (unitScenario ? [unitScenario] : []) : scenarios}
           activeId={activeScenario}
           onActivate={activateScenario}
@@ -674,6 +740,7 @@ const Index = () => {
               sunk={ship.hull_integrity <= 0}
               onToggleTraining={() => {
                 if (training) return endTraining();
+                if (integrated) return toast.info("En ejercicio integrado los ataques los lanza el instructor");
                 if (ship.hull_integrity <= 0) return toast.error("Buque perdido · pulse 'Reabastecer y reparar' primero");
                 setTraining(true);
                 toast.error("⚠ ENTRENAMIENTO · Amenazas inbound");

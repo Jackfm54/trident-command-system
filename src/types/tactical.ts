@@ -16,6 +16,7 @@ export interface Contact {
   ai_confidence: number | null;
   ai_reasoning: string | null;
   status: string;
+  target_unit_id?: string | null;
   created_at: string;
   updated_at: string;
 }
