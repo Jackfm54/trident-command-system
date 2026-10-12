@@ -69,6 +69,7 @@ const Index = () => {
   isCommandRef.current = isCommand;
   const fireRef = useRef<(w: Weapon, c: Contact, auto?: boolean) => void>(() => {});
   const rearmRef = useRef<() => void>(() => {});
+  const setAlertRef = useRef<(l: ShipSystem["alert_level"], fromStation?: boolean) => void>(() => {});
   const [exercise, setExercise] = useState<any>(null);
   const [fleet, setFleet] = useState<any[]>([]);
   const integrated = exercise?.mode === "integrated";
@@ -159,6 +160,18 @@ const Index = () => {
         if (!isCommandRef.current) return;
         if (cmd.command_type === "reset") rearmRef.current();
         if (cmd.command_type === "impact" && cmd.payload) applyImpactRef.current(cmd.payload, false);
+        if (cmd.command_type === "alert" && cmd.payload?.level) { setAlertRef.current(cmd.payload.level, true); return; }
+        if (cmd.command_type === "kill") { setStats((s) => ({ ...s, kills: s.kills + 1 })); return; }
+        if (cmd.command_type === "fire" && cmd.payload?.executed) {
+          setWeapons((ws) => ws.map((x) => (x.id === cmd.payload.weapon_id ? { ...x, ammo: Math.max(0, x.ammo - (cmd.payload.cost ?? 1)) } : x)));
+          setStats((s) => ({ ...s, shots: s.shots + 1 }));
+    const notify = (type: "fire" | "kill", payload: any) => {
+      if (isCommandRef.current || !link || !unit) return;
+      supabase.from("exercise_commands").insert({ exercise_id: unit.exercise_id, unit_id: link.unitId, command_type: type, payload, created_by: user!.id }).then();
+    };
+    notify("fire", { executed: true, weapon_id: w.id, cost: ammoCost(w), contact_id: c.id });
+          return;
+        }
         if (cmd.command_type === "fire") {
           const w = weaponsRef.current.find((x) => x.id === cmd.payload?.weapon_id);
           const c = displayRef.current.find((x) => x.id === cmd.payload?.contact_id);
@@ -172,14 +185,14 @@ const Index = () => {
 
   // Integrated exercise: follow every ship of the fleet (positions + status)
   useEffect(() => {
-    if (!exercise?.id || exercise.mode !== "integrated") { setFleet([]); return; }
+    if (!exercise?.id) { setFleet([]); return; }
     const load = () => supabase.from("exercise_units").select("*").eq("exercise_id", exercise.id).then(({ data }) => setFleet(data ?? []));
     load();
     const ch = supabase.channel(`fleet-${exercise.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "exercise_units", filter: `exercise_id=eq.${exercise.id}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [exercise?.id, exercise?.mode]);
+  }, [exercise?.id]);
 
   // Command station publishes ship state for the instructor and other stations
   useEffect(() => {
@@ -505,6 +518,7 @@ const Index = () => {
       if (hit) {
         setContacts((cs) => cs.filter((x) => x.id !== c.id));
         setStats((s) => ({ ...s, kills: s.kills + 1 }));
+        notify("kill", { contact_id: c.id });
         await supabase.from("contacts").delete().eq("id", c.id);
         await supabase.from("tactical_events").insert({
           scenario_id: c.scenario_id,
@@ -561,19 +575,16 @@ const Index = () => {
   };
 
   fireRef.current = fireWeapon;
+  setAlertRef.current = (l, f) => { setAlertLevel(l, f); };
   rearmRef.current = rearm;
 
   // Any station may request fire; the command station executes it so ammo stays consistent
   const requestFire = async (w: Weapon, c: Contact) => {
     if (isCommand) return fireWeapon(w, c);
-    setEngageOpen(false);
     const myDomain = link?.station === "aaw" ? "air" : link?.station === "asuw" ? "surface" : link?.station === "asw" ? "subsurface" : "electronic";
     if (w.domain !== myDomain) return toast.warning("Su puesto solo controla las armas de su guerra");
-    const { error } = await supabase.from("exercise_commands").insert({
-      exercise_id: unit.exercise_id, unit_id: link!.unitId, command_type: "fire", payload: { weapon_id: w.id, contact_id: c.id }, created_by: user!.id,
-    });
-    if (error) return toast.error(error.message);
-    toast.success(`Orden de fuego ${w.acronym} → ${c.track_id} enviada al Mando`);
+    // Station fires directly; the command station is notified to keep the shared magazine count
+    fireWeapon(w, c);
   };
 
   const shadow = async (c: Contact) => {
@@ -635,8 +646,15 @@ const Index = () => {
     }));
   };
 
-  const setAlertLevel = async (lvl: ShipSystem["alert_level"]) => {
-    if (!isCommand) { toast.warning("Solo el puesto de Mando cambia la condición"); return; }
+  const setAlertLevel = async (lvl: ShipSystem["alert_level"], fromStation = false) => {
+    if (!isCommandRef.current && link && unit) {
+      // Subordinate station: apply locally and order the command station to set the same condition
+      setShip((s) => ({ ...s, alert_level: lvl }));
+      supabase.from("exercise_commands").insert({ exercise_id: unit.exercise_id, unit_id: link.unitId, command_type: "alert", payload: { level: lvl }, created_by: user!.id }).then();
+      toast.success(`Condición ${lvl === "red" ? "I" : lvl === "yellow" ? "II" : "III"} ordenada para todo el buque`);
+      return;
+    }
+    if (fromStation && shipRef.current.alert_level === lvl) return;
     setShip((s) => ({ ...s, alert_level: lvl, cms_status: lvl === "red" ? "battle" : lvl === "yellow" ? "degraded" : "nominal" }));
     if (activeScenario) {
       await supabase.from("tactical_events").insert({
@@ -655,9 +673,9 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<"ppi" | "chart">("ppi");
 
   const displayContacts = useMemo<Contact[]>(() => {
-    if (!integrated) return contacts;
+    if (!link || !fleet.length) return contacts;
     const { x, y } = { x: Number(unit?.pos_x_nm ?? 0), y: Number(unit?.pos_y_nm ?? 0) };
-    const local = contacts.map((c) => relativeTo(c, x, y));
+    const local = integrated ? contacts.map((c) => relativeTo(c, x, y)) : contacts;
     const ships = fleet.filter((u) => u.id !== unit?.id).map((u) => {
       const rel = relativeTo({ range_nm: Math.hypot(Number(u.pos_x_nm), Number(u.pos_y_nm)), bearing: ((Math.atan2(Number(u.pos_x_nm), Number(u.pos_y_nm)) * 180) / Math.PI + 360) % 360 }, x, y);
       return {
@@ -668,7 +686,7 @@ const Index = () => {
       } as Contact;
     });
     return [...local, ...ships];
-  }, [contacts, integrated, fleet, unit?.id, unit?.pos_x_nm, unit?.pos_y_nm, exercise?.scenario_id]);
+  }, [contacts, integrated, link, fleet, unit?.id, unit?.pos_x_nm, unit?.pos_y_nm, exercise?.scenario_id]);
   displayRef.current = displayContacts;
   const visibleContacts = useMemo(() => displayContacts.filter((c) => c.status === "fleet" || c.status === "sunk" || isDetected(c, sensors)), [displayContacts, sensors]);
   const selected = useMemo(() => visibleContacts.find((c) => c.id === selectedId) ?? null, [visibleContacts, selectedId]);
