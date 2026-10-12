@@ -62,6 +62,7 @@ const Index = () => {
   const shipRef = useRef(ship);
   const autoRef = useRef(autoDefense);
   const engagedRef = useRef<Set<string>>(new Set());
+  const endTrainingRef = useRef<(lost?: boolean) => void>(() => {});
   contactsRef.current = contacts;
   weaponsRef.current = weapons;
   sensorsRef.current = sensors;
