@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791821388578,
+      "tag": "0000_multi_console_exercises",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791821461768,
+      "tag": "0001_member_fire_commands",
+      "breakpoints": true
+    }
+  ]
+}
