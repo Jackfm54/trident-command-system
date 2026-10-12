@@ -64,7 +64,10 @@ const Index = () => {
   const [unit, setUnit] = useState<any>(null);
   const [unitScenario, setUnitScenario] = useState<Scenario | null>(null);
   const [exerciseName, setExerciseName] = useState("");
-  const isCommand = !link || link.station === "command";
+  const [unitMembers, setUnitMembers] = useState<any[]>([]);
+  // Acting command = the "command" station, or (if none joined) the first station that joined the ship
+  const actingCommand = unitMembers.find((m) => m.station === "command") ?? unitMembers[0];
+  const isCommand = !link || (actingCommand ? actingCommand.user_id === user?.id : link.station === "command");
   const isCommandRef = useRef(isCommand);
   isCommandRef.current = isCommand;
   const fireRef = useRef<(w: Weapon, c: Contact, auto?: boolean) => void>(() => {});
@@ -177,6 +180,17 @@ const Index = () => {
     return () => { alive = false; supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [link?.unitId, link?.station]);
+
+  // Stations of my ship (to elect the acting command)
+  useEffect(() => {
+    if (!link) { setUnitMembers([]); return; }
+    const load = () => supabase.from("unit_members").select("*").eq("unit_id", link.unitId).order("created_at").then(({ data }) => setUnitMembers(data ?? []));
+    load();
+    const ch = supabase.channel(`members-${link.unitId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "unit_members", filter: `unit_id=eq.${link.unitId}` }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [link?.unitId]);
 
   // Integrated exercise: follow every ship of the fleet (positions + status)
   useEffect(() => {
@@ -313,7 +327,13 @@ const Index = () => {
         if (isCommandRef.current) runAutoDefense(next.map((c) => relativeTo(c, ownRef.current.x, ownRef.current.y)));
         return;
       }
-      if (!isCommandRef.current) return;
+      if (!isCommandRef.current) {
+        // Subordinate station: smooth local motion between updates from the command station
+        const next = contactsRef.current.map((c) => (c.status === "attacking" || (c.status === "engaged" && (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO")) ? { ...c, ...advanceAttacker(c, 1.5) } : { ...c, ...advanceContact(c) }));
+        contactsRef.current = next;
+        setContacts(next);
+        return;
+      }
       // Ship sunk: freeze the exercise and purge any remaining training threats
       if (shipRef.current.hull_integrity <= 0) {
         const left = contactsRef.current.filter((c) => (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO"));
@@ -651,6 +671,7 @@ const Index = () => {
       // Subordinate station: apply locally and order the command station to set the same condition
       setShip((s) => ({ ...s, alert_level: lvl }));
       supabase.from("exercise_commands").insert({ exercise_id: unit.exercise_id, unit_id: link.unitId, command_type: "alert", payload: { level: lvl }, created_by: user!.id }).then();
+      supabase.from("exercise_units").update({ alert_level: lvl }).eq("id", link.unitId).then();
       toast.success(`Condición ${lvl === "red" ? "I" : lvl === "yellow" ? "II" : "III"} ordenada para todo el buque`);
       return;
     }
