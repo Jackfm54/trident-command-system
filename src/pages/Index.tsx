@@ -133,22 +133,24 @@ const Index = () => {
       setContacts(survivors);
 
       for (const c of impacts) {
+        if (shipRef.current.hull_integrity <= 0) break;
         const dmg = IMPACT_DAMAGE[c.platform_type ?? ""] ?? 15;
         setStats((s) => ({ ...s, impacts: s.impacts + 1 }));
-        setShip((s) => {
-          const hull = Math.max(0, s.hull_integrity - dmg);
-          if (hull === 0 && s.hull_integrity > 0) {
-            toast.error("☠ BUQUE PERDIDO · fin del ejercicio");
-            setTraining(false);
-          }
-          return {
-            ...s,
-            hull_integrity: hull,
-            propulsion: Math.max(0, s.propulsion - dmg * 0.6),
-            power: Math.max(0, s.power - dmg * 0.5),
-            cms_status: hull < 50 ? "degraded" : s.cms_status,
-          };
-        });
+        const s0 = shipRef.current;
+        const hull = Math.max(0, s0.hull_integrity - dmg);
+        const nextShip: ShipSystem = {
+          ...s0,
+          hull_integrity: hull,
+          propulsion: Math.max(0, s0.propulsion - dmg * 0.6),
+          power: Math.max(0, s0.power - dmg * 0.5),
+          cms_status: hull < 50 ? "degraded" : s0.cms_status,
+        };
+        shipRef.current = nextShip;
+        setShip(nextShip);
+        if (hull === 0) {
+          toast.error("☠ BUQUE PERDIDO · fin del ejercicio. Pulse 'Reabastecer y reparar' para reiniciar.");
+          endTrainingRef.current(true);
+        }
         if (dmg >= 25) setSensors((ss) => ss.map((s, i) => (i === Math.floor(Math.random() * ss.length) ? { ...s, status: "degraded" } : s)));
         toast.error(`💥 IMPACTO · ${c.track_id} (${c.platform_type}) −${dmg}% casco`);
         supabase.from("contacts").delete().eq("id", c.id).then();
@@ -309,6 +311,7 @@ const Index = () => {
 
   const fireWeapon = async (w: Weapon, c: Contact, auto = false) => {
     setEngageOpen(false);
+    if (shipRef.current.hull_integrity <= 0) { if (!auto) toast.error("Buque perdido · sistemas de armas inoperativos"); return; }
     const cur = weaponsRef.current.find((x) => x.id === w.id);
     if (!cur || cur.ammo <= 0) { toast.error(`${w.acronym} sin munición`); return; }
     const prevStatus = c.status;
@@ -361,6 +364,25 @@ const Index = () => {
       }
     }, Math.min(4000, Math.max(800, tof * 100)));
   };
+
+  const endTraining = (lost = false) => {
+    setTraining(false);
+    setAutoDefense(false);
+    autoRef.current = false;
+    const trainees = contactsRef.current.filter((c) => (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO"));
+    const ids = trainees.map((c) => c.id);
+    contactsRef.current = contactsRef.current.filter((c) => !ids.includes(c.id));
+    setContacts(contactsRef.current);
+    if (ids.length) supabase.from("contacts").delete().in("id", ids).then();
+    if (activeScenario) {
+      supabase.from("tactical_events").insert({
+        scenario_id: activeScenario, event_type: "training_end", domain: "mixed", severity: lost ? "critical" : "info",
+        message: lost ? "☠ EJERCICIO FINALIZADO · BUQUE PERDIDO" : "Ejercicio de entrenamiento detenido · amenazas retiradas",
+      }).then();
+    }
+    if (!lost) toast.info("Entrenamiento detenido · amenazas retiradas");
+  };
+  endTrainingRef.current = endTraining;
 
   const rearm = () => {
     setWeapons(INITIAL_WEAPONS);
@@ -498,8 +520,10 @@ const Index = () => {
               stats={stats}
               running={!!activeScenario}
               onToggleTraining={() => {
-                setTraining((t) => !t);
-                toast[training ? "info" : "error"](training ? "Entrenamiento detenido" : "⚠ ENTRENAMIENTO · Amenazas inbound");
+                if (training) return endTraining();
+                if (ship.hull_integrity <= 0) return toast.error("Buque perdido · pulse 'Reabastecer y reparar' primero");
+                setTraining(true);
+                toast.error("⚠ ENTRENAMIENTO · Amenazas inbound");
               }}
               onToggleAuto={() => setAutoDefense((a) => !a)}
               onDifficulty={setDifficulty}
