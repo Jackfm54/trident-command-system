@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,8 @@ const queryClient = new QueryClient();
 
 function Protected({ children, instructor }: { children: JSX.Element; instructor?: boolean }) {
   const { user, loading, isInstructor, rolesReady } = useAuth();
+  const location = useLocation();
+  if (location.search.includes("unit=")) localStorage.setItem("tcm.pending", location.search);
   if (loading || (instructor && user && !rolesReady)) return <div className="min-h-screen bg-background" />;
   if (!user) return <Navigate to="/auth" replace />;
   if (instructor && !isInstructor) return <Navigate to="/" replace />;
