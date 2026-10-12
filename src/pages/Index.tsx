@@ -90,6 +90,22 @@ const Index = () => {
   useEffect(() => { localStorage.setItem("tcm.ship", JSON.stringify(ship)); }, [ship]);
   useEffect(() => { localStorage.setItem("tcm.link", JSON.stringify(link)); }, [link]);
 
+  // ===== Invite links: /?unit=<id>&station=<aaw|asuw|asw|ew|command> auto-join =====
+  useEffect(() => {
+    if (!user) return;
+    const q = new URLSearchParams(window.location.search.includes("unit=") ? window.location.search : localStorage.getItem("tcm.pending") ?? "");
+    localStorage.removeItem("tcm.pending");
+    const unitId = q.get("unit");
+    const station = q.get("station") ?? "command";
+    if (!unitId) return;
+    window.history.replaceState({}, "", "/");
+    supabase.from("unit_members").upsert({ unit_id: unitId, user_id: user.id, station }, { onConflict: "unit_id,user_id" }).then(({ error }) => {
+      if (error) return toast.error("No se pudo unir al buque: " + error.message);
+      setLink({ unitId, station });
+      toast.success(`Enlazado al buque · puesto ${station.toUpperCase()}`);
+    });
+  }, [user?.id]);
+
   // ===== Exercise link: load unit, follow its scenario, sync state =====
   useEffect(() => {
     if (!link) { setUnit(null); setUnitScenario(null); return; }

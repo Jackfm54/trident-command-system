@@ -207,6 +207,14 @@ export default function Master() {
   const unitMembers = (uid: string) => members.filter((m) => m.unit_id === uid);
   const fresh = (u: Unit) => Date.now() - new Date(u.updated_at).getTime() < 15000;
 
+  const copyLink = (u: Unit, station: string) => {
+    const url = `${window.location.origin}/?unit=${u.id}&station=${station}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast.success(`Enlace ${STATION_LABEL[station]} de ${u.name} copiado`),
+      () => window.prompt("Copie el enlace:", url)
+    );
+  };
+
   const sel = "bg-input border border-border rounded px-2 py-1.5 text-xs font-mono";
 
   return (
@@ -338,6 +346,20 @@ export default function Master() {
                       </div>
                       <div className="text-[10px] font-mono text-muted-foreground">
                         Puestos: {unitMembers(u.id).length === 0 ? "ninguno conectado" : unitMembers(u.id).map((m) => `${STATION_LABEL[m.station] ?? m.station}: ${names[m.user_id] ?? "?"}`).join(" · ")}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-mono text-muted-foreground">Copiar enlace de invitación por puesto:</div>
+                        <div className="grid grid-cols-5 gap-1">
+                          {Object.keys(STATION_LABEL).map((st) => {
+                            const taken = unitMembers(u.id).find((m) => m.station === st);
+                            return (
+                              <button key={st} onClick={() => copyLink(u, st)} title={taken ? `Ocupado por ${names[taken.user_id] ?? "?"}` : "Libre"}
+                                className={`text-[10px] font-mono border py-1 ${taken ? "border-threat-friend text-threat-friend" : "border-border hover:border-accent"}`}>
+                                {STATION_LABEL[st]}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                       <div className="flex gap-1">
                         <Button size="sm" variant="destructive" disabled={ex.status !== "running" || u.status === "sunk"} onClick={() => launchRaid([u])} className="flex-1 font-mono text-[10px] h-7"><Rocket className="w-3 h-3 mr-1" />Raid</Button>
