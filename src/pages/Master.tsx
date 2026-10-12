@@ -239,6 +239,34 @@ export default function Master() {
 
   unitsRef.current = units;
 
+  const [formation, setFormation] = useState({ type: "circle", spacing: 3, axis: 0 });
+  const applyFormation = async () => {
+    if (!units.length) return toast.warning("Añada buques primero");
+    const { type, spacing: d, axis } = formation;
+    const n = units.length;
+    // offsets in formation frame: f = forward along axis, r = to starboard
+    const offs: { f: number; r: number }[] = units.map((_, i) => {
+      if (i === 0) return { f: 0, r: 0 }; // guide / flagship at centre
+      const k = Math.ceil(i / 2), side = i % 2 ? 1 : -1;
+      switch (type) {
+        case "column": return { f: -i * d, r: 0 };
+        case "line": return { f: 0, r: side * k * d };
+        case "wedge": return { f: -k * d, r: side * k * d };
+        case "echelon": return { f: -i * d, r: i * d };
+        case "diamond": return [{ f: d, r: 0 }, { f: 0, r: d }, { f: 0, r: -d }, { f: -d, r: 0 }][(i - 1) % 4] && { ...[{ f: d, r: 0 }, { f: 0, r: d }, { f: 0, r: -d }, { f: -d, r: 0 }][(i - 1) % 4], f: [d, 0, 0, -d][(i - 1) % 4] * Math.ceil(i / 4) };
+        default: { const a = ((i - 1) / Math.max(1, n - 1)) * 2 * Math.PI; return { f: Math.cos(a) * d, r: Math.sin(a) * d }; } // circle (AAW screen)
+      }
+    });
+    const ax = (axis * Math.PI) / 180;
+    await Promise.all(units.map((u, i) => {
+      const { f, r } = offs[i];
+      const x = f * Math.sin(ax) + r * Math.cos(ax);
+      const y = f * Math.cos(ax) - r * Math.sin(ax);
+      return supabase.from("exercise_units").update({ pos_x_nm: x, pos_y_nm: y }).eq("id", u.id);
+    }));
+    toast.success(`Formación aplicada · ${units[0].name} como guía`);
+  };
+
   const seedTheatre = async () => {
     if (!ex?.scenario_id) return;
     const tpl = templates.find((t) => t.id === seedTpl);
@@ -444,6 +472,20 @@ export default function Master() {
                       {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                     <Button size="sm" variant="outline" onClick={seedTheatre} className="font-mono text-xs h-8">Sembrar escenario</Button>
+                    <span className="hud-label ml-2">Formación</span>
+                    <select className={sel} value={formation.type} onChange={(e) => setFormation({ ...formation, type: e.target.value })}>
+                      <option value="circle">Circular (pantalla AAW)</option>
+                      <option value="column">Columna / línea de fila</option>
+                      <option value="line">Línea de frente</option>
+                      <option value="wedge">Cuña (V)</option>
+                      <option value="echelon">Escalón</option>
+                      <option value="diamond">Diamante</option>
+                    </select>
+                    <Input type="number" min={0.5} step={0.5} value={formation.spacing} onChange={(e) => setFormation({ ...formation, spacing: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Distancia entre buques (NM)" />
+                    <span className="text-[10px] font-mono">NM</span>
+                    <Input type="number" value={formation.axis} onChange={(e) => setFormation({ ...formation, axis: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Eje / rumbo de la formación (°)" />
+                    <span className="text-[10px] font-mono">° eje</span>
+                    <Button size="sm" onClick={applyFormation} className="font-mono text-xs h-8">Aplicar</Button>
                     {ex.status !== "running" && <span className="text-[10px] font-mono text-primary">Inicie el ejercicio para que las amenazas se muevan. Mantenga esta pantalla abierta: es el simulador central.</span>}
                   </div>
                   <FleetPlot units={units} contacts={fleetContacts} />
