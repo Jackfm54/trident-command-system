@@ -5,16 +5,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { THREATS, PLATFORM_LABEL, waveFromThreats } from "@/lib/combatEngine";
+import { THREATS, PLATFORM_LABEL, waveFromThreats, attackerSeedAt, advanceToward, distTo, toXY, IMPACT_DAMAGE } from "@/lib/combatEngine";
+import { advanceContact, generateRandomContact } from "@/lib/simulator";
+import { useRef } from "react";
+import type { Contact } from "@/types/tactical";
 import { PLATFORM_BY_DOMAIN } from "@/lib/simulator";
 import { DOMAIN_META, Domain } from "@/types/tactical";
 import { Play, Square, Plus, Rocket, FileText, Printer, Monitor, LogOut, Trash2 } from "lucide-react";
 
-type Exercise = { id: string; name: string; status: string; started_at: string | null; ended_at: string | null; created_at: string };
+type Exercise = { id: string; name: string; status: string; mode: string; scenario_id: string | null; started_at: string | null; ended_at: string | null; created_at: string };
 type Unit = {
   id: string; exercise_id: string; name: string; scenario_id: string | null; status: string;
   hull_integrity: number; propulsion: number; power: number; alert_level: string;
-  kills: number; impacts: number; shots: number; ammo_pct: number; updated_at: string;
+  kills: number; impacts: number; shots: number; ammo_pct: number; updated_at: string; pos_x_nm: number; pos_y_nm: number;
 };
 type Member = { id: string; unit_id: string; user_id: string; station: string };
 type Scn = { id: string; name: string; domain: string; threat_level: string; threats: any; is_template: boolean };
@@ -50,7 +53,12 @@ export default function Master() {
   const [events, setEvents] = useState<any[]>([]);
   const [contactCounts, setContactCounts] = useState<Record<string, Record<string, number>>>({});
   const [newEx, setNewEx] = useState("");
-  const [newUnit, setNewUnit] = useState({ name: "", template: "" });
+  const [newMode, setNewMode] = useState<"independent" | "integrated">("integrated");
+  const [newUnit, setNewUnit] = useState({ name: "", template: "", bearing: 0, dist: 0 });
+  const [seedTpl, setSeedTpl] = useState("");
+  const [fleetContacts, setFleetContacts] = useState<Contact[]>([]);
+  const fcRef = useRef<Contact[]>([]);
+  const unitsRef = useRef<Unit[]>([]);
   const [raid, setRaid] = useState<{ platform: string; count: number }>({ platform: THREATS[0].platform, count: 2 });
   const [showReport, setShowReport] = useState(false);
   // scenario builder
@@ -128,7 +136,13 @@ export default function Master() {
 
   const createExercise = async () => {
     if (!newEx.trim() || !user) return;
-    const { data, error } = await supabase.from("exercises").insert({ name: newEx.trim(), created_by: user.id }).select().single();
+    let scenario_id: string | null = null;
+    if (newMode === "integrated") {
+      const { data: scn, error: e0 } = await supabase.from("scenarios").insert({ name: `${newEx.trim()} · Teatro común`, domain: "mixed", threat_level: "high", is_template: false, created_by: user.id }).select().single();
+      if (e0) return toast.error(e0.message);
+      scenario_id = scn.id;
+    }
+    const { data, error } = await supabase.from("exercises").insert({ name: newEx.trim(), created_by: user.id, mode: newMode, scenario_id }).select().single();
     if (error) return toast.error(error.message);
     setNewEx("");
     setExId(data.id);
@@ -138,6 +152,14 @@ export default function Master() {
 
   const addUnit = async () => {
     if (!ex || !newUnit.name.trim()) return toast.warning("Escriba el nombre del buque");
+    const b = (newUnit.bearing * Math.PI) / 180;
+    const pos = { pos_x_nm: newUnit.dist * Math.sin(b), pos_y_nm: newUnit.dist * Math.cos(b) };
+    if (ex.mode === "integrated") {
+      const { error } = await supabase.from("exercise_units").insert({ exercise_id: ex.id, name: newUnit.name.trim(), scenario_id: ex.scenario_id, ...pos });
+      if (error) return toast.error(error.message);
+      setNewUnit({ ...newUnit, name: "" });
+      return toast.success(`Buque ${newUnit.name} posicionado a ${newUnit.dist} NM / ${newUnit.bearing}°`);
+    }
     const tpl = templates.find((t) => t.id === newUnit.template);
     const { data: scn, error: e1 } = await supabase.from("scenarios").insert({
       name: `${ex.name} · ${newUnit.name.trim()}`,
@@ -149,9 +171,9 @@ export default function Master() {
       created_by: user?.id,
     }).select().single();
     if (e1) return toast.error(e1.message);
-    const { error } = await supabase.from("exercise_units").insert({ exercise_id: ex.id, name: newUnit.name.trim(), scenario_id: scn.id });
+    const { error } = await supabase.from("exercise_units").insert({ exercise_id: ex.id, name: newUnit.name.trim(), scenario_id: scn.id, ...pos });
     if (error) return toast.error(error.message);
-    setNewUnit({ name: "", template: newUnit.template });
+    setNewUnit({ ...newUnit, name: "" });
     toast.success(`Buque ${newUnit.name} añadido`);
   };
 
@@ -173,6 +195,18 @@ export default function Master() {
     const live = targets.filter((u) => u.status !== "sunk" && u.scenario_id);
     if (!live.length) return toast.warning("No hay buques a flote para atacar");
     const threats = [{ platform: raid.platform, count: raid.count }];
+    if (ex.mode === "integrated" && ex.scenario_id) {
+      for (const u of live) {
+        const wave = threats.flatMap((t) => Array.from({ length: Math.min(20, t.count) }, () => attackerSeedAt(ex.scenario_id!, t.platform, u.id, Number(u.pos_x_nm), Number(u.pos_y_nm)))).filter(Boolean) as any[];
+        await supabase.from("contacts").insert(wave);
+        await supabase.from("tactical_events").insert({
+          scenario_id: ex.scenario_id, event_type: "raid", domain: "mixed", severity: "critical",
+          message: `🚨 RAID DEL INSTRUCTOR · ${wave.length}× ${PLATFORM_LABEL[raid.platform]} contra ${u.name}`,
+        });
+        await supabase.from("exercise_commands").insert({ exercise_id: ex.id, unit_id: u.id, command_type: "raid", payload: { threats }, created_by: user.id });
+      }
+      return toast.error(`Raid lanzado contra ${live.length} buque(s)`);
+    }
     for (const u of live) {
       // Insert threats directly so the raid arrives even if the ship console is momentarily disconnected
       const wave = waveFromThreats(u.scenario_id!, threats);
@@ -202,6 +236,85 @@ export default function Master() {
     setSbThreats([]);
     loadTemplates();
   };
+
+  unitsRef.current = units;
+
+  const seedTheatre = async () => {
+    if (!ex?.scenario_id) return;
+    const tpl = templates.find((t) => t.id === seedTpl);
+    const sid = ex.scenario_id;
+    const live = units.filter((u) => u.status !== "sunk");
+    const threats: any[] = Array.isArray(tpl?.threats) ? tpl!.threats : [];
+    let seeds: any[];
+    if (threats.length) {
+      seeds = threats.flatMap((t: any) => Array.from({ length: Math.min(20, t.count) }, () => {
+        const tgt = live[Math.floor(Math.random() * live.length)];
+        return (t.hostile && tgt && attackerSeedAt(sid, t.platform, tgt.id, Number(tgt.pos_x_nm), Number(tgt.pos_y_nm))) || { ...generateRandomContact(sid, t.domain), domain: t.domain, platform_type: t.platform };
+      }));
+    } else {
+      const n = tpl?.threat_level === "critical" ? 10 : tpl?.threat_level === "high" ? 8 : 6;
+      const dom = tpl && tpl.domain !== "mixed" ? (tpl.domain as Domain) : undefined;
+      seeds = Array.from({ length: n }, () => generateRandomContact(sid, dom));
+    }
+    await supabase.from("contacts").delete().eq("scenario_id", sid);
+    await supabase.from("contacts").insert(seeds);
+    await supabase.from("tactical_events").insert({ scenario_id: sid, event_type: "scenario", domain: "mixed", severity: "info", message: `Teatro común sembrado: ${tpl?.name ?? "aleatorio"} · ${seeds.length} contactos` });
+    toast.success(`Teatro común con ${seeds.length} contactos`);
+  };
+
+  const moveUnit = async (u: Unit, bearing: number, dist: number) => {
+    const b = (bearing * Math.PI) / 180;
+    await supabase.from("exercise_units").update({ pos_x_nm: dist * Math.sin(b), pos_y_nm: dist * Math.cos(b) }).eq("id", u.id);
+  };
+
+  // Integrated exercise: this station is the authoritative simulator of the common sea
+  useEffect(() => {
+    if (!ex || ex.mode !== "integrated" || !ex.scenario_id) { setFleetContacts([]); return; }
+    const sid = ex.scenario_id;
+    supabase.from("contacts").select("*").eq("scenario_id", sid).then(({ data }) => { fcRef.current = (data ?? []) as Contact[]; setFleetContacts(fcRef.current); });
+    const ch = supabase.channel(`theatre-${sid}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "contacts", filter: `scenario_id=eq.${sid}` }, (p) => {
+        if (p.eventType === "INSERT") fcRef.current = [...fcRef.current, p.new as Contact];
+        else if (p.eventType === "DELETE") fcRef.current = fcRef.current.filter((c) => c.id !== (p.old as any).id);
+        else if (p.eventType === "UPDATE") fcRef.current = fcRef.current.map((c) => (c.id === (p.new as any).id ? { ...c, status: (p.new as any).status, classification: (p.new as any).classification, platform_type: (p.new as any).platform_type, speed_kts: (p.new as any).speed_kts } : c));
+        setFleetContacts(fcRef.current);
+      }).subscribe();
+    if (ex.status !== "running") return () => { supabase.removeChannel(ch); };
+    let n = 0;
+    const id = window.setInterval(() => {
+      const us = unitsRef.current;
+      const alive = us.filter((u) => u.status !== "sunk");
+      const impacts: { c: Contact; u: Unit }[] = [];
+      const next: Contact[] = [];
+      for (const c of fcRef.current) {
+        let t = c.target_unit_id ? us.find((u) => u.id === c.target_unit_id) : undefined;
+        if (t && t.status === "sunk") {
+          // retarget to nearest surviving ship
+          const near = alive.sort((a, b) => distTo(c, Number(a.pos_x_nm), Number(a.pos_y_nm)) - distTo(c, Number(b.pos_x_nm), Number(b.pos_y_nm)))[0];
+          if (near) { c.target_unit_id = near.id; t = near; supabase.from("contacts").update({ target_unit_id: near.id }).eq("id", c.id).then(); }
+          else t = undefined;
+        }
+        if (t && (c.status === "attacking" || c.status === "engaged")) {
+          const m = { ...c, ...advanceToward(c, Number(t.pos_x_nm), Number(t.pos_y_nm), 1.5) };
+          if (distTo(m, Number(t.pos_x_nm), Number(t.pos_y_nm)) <= 0.15) impacts.push({ c: m, u: t });
+          else next.push(m);
+        } else next.push({ ...c, ...advanceContact(c) });
+      }
+      fcRef.current = next;
+      setFleetContacts(next);
+      for (const { c, u } of impacts) {
+        const dmg = IMPACT_DAMAGE[c.platform_type ?? ""] ?? 15;
+        supabase.from("contacts").delete().eq("id", c.id).then();
+        supabase.from("exercise_commands").insert({ exercise_id: ex.id, unit_id: u.id, command_type: "impact", created_by: user!.id,
+          payload: { track_id: c.track_id, platform_type: c.platform_type, domain: c.domain, scenario_id: sid } }).then();
+        supabase.from("tactical_events").insert({ scenario_id: sid, event_type: "impact", domain: c.domain, severity: "critical",
+          message: `💥 IMPACTO en ${u.name} · ${c.track_id} (${c.platform_type}) · daño ${dmg}%` }).then();
+      }
+      if (++n % 2 === 0) next.forEach((c) => supabase.from("contacts").update({ range_nm: c.range_nm, bearing: c.bearing, heading: c.heading }).eq("id", c.id).then());
+    }, 1500);
+    return () => { window.clearInterval(id); supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ex?.id, ex?.mode, ex?.scenario_id, ex?.status]);
 
   const ranking = [...units].sort((a, b) => unitScore(b) - unitScore(a));
   const unitMembers = (uid: string) => members.filter((m) => m.unit_id === uid);
@@ -243,6 +356,10 @@ export default function Master() {
           ))}
           <div className="ml-auto flex gap-2">
             <Input value={newEx} onChange={(e) => setNewEx(e.target.value)} placeholder="Nuevo ejercicio (ej. UNITAS 2026)" className="h-8 w-56 text-xs" />
+            <select className="bg-input border border-border rounded px-2 text-xs font-mono" value={newMode} onChange={(e) => setNewMode(e.target.value as any)}>
+              <option value="integrated">Flota integrada (mismo mar)</option>
+              <option value="independent">Buques independientes</option>
+            </select>
             <Button size="sm" onClick={createExercise} className="font-mono text-xs"><Plus className="w-3.5 h-3.5 mr-1" />Crear</Button>
           </div>
         </div>
@@ -304,12 +421,34 @@ export default function Master() {
               <div className="hud-panel p-3 flex flex-wrap gap-2 items-center">
                 <span className="hud-label mr-1">Añadir buque</span>
                 <Input value={newUnit.name} onChange={(e) => setNewUnit({ ...newUnit, name: e.target.value })} placeholder="ARC Almirante Padilla" className="h-8 w-52 text-xs" />
-                <select className={sel} value={newUnit.template} onChange={(e) => setNewUnit({ ...newUnit, template: e.target.value })}>
-                  <option value="">Escenario: vacío</option>
-                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+                {ex.mode !== "integrated" && (
+                  <select className={sel} value={newUnit.template} onChange={(e) => setNewUnit({ ...newUnit, template: e.target.value })}>
+                    <option value="">Escenario: vacío</option>
+                    {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                )}
+                <span className="text-[10px] font-mono text-muted-foreground">Posición</span>
+                <Input type="number" value={newUnit.bearing} onChange={(e) => setNewUnit({ ...newUnit, bearing: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Demora desde el centro (°)" />
+                <span className="text-[10px] font-mono">°</span>
+                <Input type="number" value={newUnit.dist} onChange={(e) => setNewUnit({ ...newUnit, dist: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Distancia desde el centro (NM)" />
+                <span className="text-[10px] font-mono">NM</span>
                 <Button size="sm" onClick={addUnit} className="font-mono text-xs"><Plus className="w-3.5 h-3.5 mr-1" />Añadir</Button>
               </div>
+
+              {ex.mode === "integrated" && (
+                <div className="hud-panel p-3 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="hud-label">Teatro común · flota integrada</span>
+                    <select className={sel} value={seedTpl} onChange={(e) => setSeedTpl(e.target.value)}>
+                      <option value="">Contactos aleatorios</option>
+                      {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                    <Button size="sm" variant="outline" onClick={seedTheatre} className="font-mono text-xs h-8">Sembrar escenario</Button>
+                    {ex.status !== "running" && <span className="text-[10px] font-mono text-primary">Inicie el ejercicio para que las amenazas se muevan. Mantenga esta pantalla abierta: es el simulador central.</span>}
+                  </div>
+                  <FleetPlot units={units} contacts={fleetContacts} />
+                </div>
+              )}
 
               {units.length === 0 && <div className="hud-panel p-6 text-center text-xs font-mono text-muted-foreground">Añada buques al ejercicio. Cada operador se une desde su consola con su usuario.</div>}
 
@@ -347,6 +486,9 @@ export default function Master() {
                       <div className="text-[10px] font-mono text-muted-foreground">
                         Puestos: {unitMembers(u.id).length === 0 ? "ninguno conectado" : unitMembers(u.id).map((m) => `${STATION_LABEL[m.station] ?? m.station}: ${names[m.user_id] ?? "?"}`).join(" · ")}
                       </div>
+                      {ex.mode === "integrated" && (
+                        <PosEditor u={u} onSave={(b, d) => moveUnit(u, b, d)} />
+                      )}
                       <div className="space-y-1">
                         <div className="text-[10px] font-mono text-muted-foreground">Copiar enlace de invitación por puesto:</div>
                         <div className="grid grid-cols-5 gap-1">
@@ -427,5 +569,56 @@ export default function Master() {
         {!ex && <div className="hud-panel p-6 text-center text-xs font-mono text-muted-foreground">Cree un ejercicio para empezar.</div>}
       </main>
     </div>
+  );
+}
+
+function PosEditor({ u, onSave }: { u: Unit; onSave: (b: number, d: number) => void }) {
+  const x = Number(u.pos_x_nm), y = Number(u.pos_y_nm);
+  const [b, setB] = useState(Math.round(((Math.atan2(x, y) * 180) / Math.PI + 360) % 360));
+  const [d, setD] = useState(Math.round(Math.hypot(x, y) * 10) / 10);
+  return (
+    <div className="flex items-center gap-1 text-[10px] font-mono">
+      <span className="text-muted-foreground">Posición</span>
+      <Input type="number" value={b} onChange={(e) => setB(Number(e.target.value))} className="h-6 w-14 text-[10px]" />°
+      <Input type="number" value={d} onChange={(e) => setD(Number(e.target.value))} className="h-6 w-14 text-[10px]" />NM
+      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => onSave(b, d)}>Mover</Button>
+    </div>
+  );
+}
+
+const CLS_COLOR: Record<string, string> = { hostile: "hsl(var(--threat-hostile))", friend: "hsl(var(--threat-friend))", neutral: "hsl(var(--threat-neutral))", suspect: "hsl(var(--primary))" };
+
+function FleetPlot({ units, contacts }: { units: Unit[]; contacts: Contact[] }) {
+  const pts = [...units.map((u) => ({ x: Number(u.pos_x_nm), y: Number(u.pos_y_nm) })), ...contacts.map((c) => toXY(c))];
+  const max = Math.max(10, ...pts.map((p) => Math.max(Math.abs(p.x), Math.abs(p.y)))) * 1.1;
+  const S = 200 / max;
+  return (
+    <svg viewBox="-210 -210 420 420" className="w-full max-h-[480px] bg-hud-bg/60 border border-border">
+      {[0.25, 0.5, 0.75, 1].map((k) => <circle key={k} r={200 * k} fill="none" stroke="hsl(var(--border))" strokeDasharray="2 4" />)}
+      <line x1={-200} y1={0} x2={200} y2={0} stroke="hsl(var(--border))" />
+      <line x1={0} y1={-200} x2={0} y2={200} stroke="hsl(var(--border))" />
+      <text x={4} y={-192} fontSize="9" fill="hsl(var(--muted-foreground))">N · radio {max.toFixed(0)} NM</text>
+      {contacts.map((c) => {
+        const p = toXY(c);
+        const col = CLS_COLOR[c.classification] ?? "hsl(var(--muted-foreground))";
+        return (
+          <g key={c.id} transform={`translate(${p.x * S},${-p.y * S})`}>
+            <circle r={c.status === "attacking" ? 3.5 : 2.5} fill={col} />
+            {c.status === "attacking" && <circle r={6} fill="none" stroke={col} className="animate-pulse" />}
+            <text x={5} y={3} fontSize="7" fill={col}>{c.track_id}</text>
+          </g>
+        );
+      })}
+      {units.map((u) => (
+        <g key={u.id} transform={`translate(${Number(u.pos_x_nm) * S},${-Number(u.pos_y_nm) * S})`}>
+          {u.status === "sunk" ? (
+            <text textAnchor="middle" y={4} fontSize="12" fill="hsl(var(--destructive))">✕</text>
+          ) : (
+            <rect x={-5} y={-5} width={10} height={10} fill="none" stroke="hsl(var(--accent))" strokeWidth={2} />
+          )}
+          <text x={8} y={-6} fontSize="9" fill="hsl(var(--accent))">{u.name}</text>
+        </g>
+      ))}
+    </svg>
   );
 }
