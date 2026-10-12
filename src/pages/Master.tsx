@@ -332,7 +332,7 @@ export default function Master() {
                       </div>
                       <div className="flex flex-wrap gap-1 text-[10px] font-mono">
                         {(["air", "surface", "subsurface", "electronic"] as Domain[]).map((d) => (
-                          <span key={d} className="border border-border px-1">{DOMAIN_META[d].short} {cc[d] ?? 0}</span>
+                          <span key={d} className="border border-border px-1">{DOMAIN_META[d].abbr} {cc[d] ?? 0}</span>
                         ))}
                         <span className="border border-destructive text-destructive px-1">Hostiles {cc.hostile ?? 0}</span>
                       </div>
@@ -390,7 +390,7 @@ export default function Master() {
                 <div className="space-y-0.5">
                   {sbThreats.map((t, i) => (
                     <div key={i} className="flex justify-between text-[10px] font-mono border border-border/50 px-1">
-                      <span>{t.count}× {t.platform} ({DOMAIN_META[t.domain].short}){t.hostile ? " · ATACA" : ""}</span>
+                      <span>{t.count}× {t.platform} ({DOMAIN_META[t.domain].abbr}){t.hostile ? " · ATACA" : ""}</span>
                       <button onClick={() => setSbThreats(sbThreats.filter((_, j) => j !== i))} className="text-destructive">✕</button>
                     </div>
                   ))}

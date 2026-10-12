@@ -12,8 +12,8 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 const queryClient = new QueryClient();
 
 function Protected({ children, instructor }: { children: JSX.Element; instructor?: boolean }) {
-  const { user, loading, isInstructor } = useAuth();
-  if (loading) return <div className="min-h-screen bg-background" />;
+  const { user, loading, isInstructor, rolesReady } = useAuth();
+  if (loading || (instructor && user && !rolesReady)) return <div className="min-h-screen bg-background" />;
   if (!user) return <Navigate to="/auth" replace />;
   if (instructor && !isInstructor) return <Navigate to="/" replace />;
   return children;
