@@ -34,7 +34,7 @@ export const IMPACT_DAMAGE: Record<string, number> = {
 type Seed = Omit<Contact, "id" | "created_at" | "updated_at">;
 const r = (a: number, b: number) => a + Math.random() * (b - a);
 
-const THREATS: { domain: Domain; platform: string; speed: [number, number]; range: [number, number]; alt: [number, number] }[] = [
+export const THREATS: { domain: Domain; platform: string; speed: [number, number]; range: [number, number]; alt: [number, number] }[] = [
   { domain: "air", platform: "anti-ship-missile", speed: [550, 750], range: [22, 35], alt: [20, 60] },
   { domain: "air", platform: "uav-kamikaze", speed: [90, 160], range: [10, 20], alt: [200, 1200] },
   { domain: "air", platform: "loitering-munition", speed: [100, 180], range: [8, 16], alt: [150, 800] },
@@ -42,27 +42,42 @@ const THREATS: { domain: Domain; platform: string; speed: [number, number]; rang
   { domain: "subsurface", platform: "torpedo", speed: [40, 55], range: [4, 8], alt: [-60, -20] },
 ];
 
+export const PLATFORM_LABEL: Record<string, string> = {
+  "anti-ship-missile": "Misil antibuque",
+  "uav-kamikaze": "Dron aéreo kamikaze",
+  "loitering-munition": "Munición merodeadora",
+  "usv-kamikaze": "Lancha no tripulada kamikaze",
+  torpedo: "Torpedo",
+};
+
+export function attackerSeed(scenarioId: string, platform: string): Seed | null {
+  const t = THREATS.find((x) => x.platform === platform);
+  if (!t) return null;
+  const bearing = r(0, 360);
+  return {
+    scenario_id: scenarioId,
+    track_id: `${t.domain === "air" ? "AIR" : t.domain === "surface" ? "SUR" : "SUB"}-${Math.floor(r(1000, 9999))}`,
+    domain: t.domain,
+    classification: "hostile",
+    platform_type: t.platform,
+    bearing,
+    range_nm: r(t.range[0], t.range[1]),
+    speed_kts: r(t.speed[0], t.speed[1]),
+    altitude_ft: r(t.alt[0], t.alt[1]),
+    heading: (bearing + 180) % 360,
+    ai_confidence: 0.95,
+    ai_reasoning: "ENTRENAMIENTO · Amenaza inbound con rumbo de colisión hacia propia unidad.",
+    status: "attacking",
+  } as Seed;
+}
+
 export function generateAttackWave(scenarioId: string, difficulty: number): Seed[] {
   const n = Math.max(1, Math.round(r(1, 1 + difficulty)));
-  return Array.from({ length: n }, () => {
-    const t = THREATS[Math.floor(Math.random() * THREATS.length)];
-    const bearing = r(0, 360);
-    return {
-      scenario_id: scenarioId,
-      track_id: `${t.domain === "air" ? "AIR" : t.domain === "surface" ? "SUR" : "SUB"}-${Math.floor(r(1000, 9999))}`,
-      domain: t.domain,
-      classification: "hostile",
-      platform_type: t.platform,
-      bearing,
-      range_nm: r(t.range[0], t.range[1]),
-      speed_kts: r(t.speed[0], t.speed[1]),
-      altitude_ft: r(t.alt[0], t.alt[1]),
-      heading: (bearing + 180) % 360,
-      ai_confidence: 0.95,
-      ai_reasoning: "ENTRENAMIENTO · Amenaza inbound con rumbo de colisión hacia propia unidad.",
-      status: "attacking",
-    } as Seed;
-  });
+  return Array.from({ length: n }, () => attackerSeed(scenarioId, THREATS[Math.floor(Math.random() * THREATS.length)].platform)!);
+}
+
+export function waveFromThreats(scenarioId: string, threats: { platform: string; count: number }[]): Seed[] {
+  return threats.flatMap((t) => Array.from({ length: Math.min(20, Math.max(0, t.count)) }, () => attackerSeed(scenarioId, t.platform)).filter(Boolean) as Seed[]);
 }
 
 /** TEWA: best weapon = in domain, with ammo, in range; prefers highest pk then longest range margin. */

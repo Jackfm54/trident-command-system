@@ -7,7 +7,7 @@ const TRACK_PREFIXES: Record<Domain, string> = {
   electronic: "ELE",
 };
 
-const PLATFORM_BY_DOMAIN: Record<Domain, string[]> = {
+export const PLATFORM_BY_DOMAIN: Record<Domain, string[]> = {
   air: ["fast-jet", "anti-ship-missile", "helo", "uav-recon", "uav-kamikaze", "loitering-munition", "patrol-aircraft"],
   surface: ["frigate", "patrol-boat", "fishing-vessel", "cargo-ship", "fast-attack-craft", "usv-recon", "usv-kamikaze"],
   subsurface: ["submarine", "uuv-recon", "uuv-kamikaze", "torpedo"],
