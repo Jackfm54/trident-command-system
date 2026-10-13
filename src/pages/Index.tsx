@@ -840,6 +840,7 @@ const Index = () => {
                       <div className="w-full max-w-[820px]">
                         {viewMode === "ppi" ? (
                           <TacticalRadar
+                            ownName={unit?.name ?? "ARC ALM. PADILLA"}
                             contacts={visibleContacts}
                             filterDomain={t.key === "ALL" ? "all" : t.key}
                             selectedId={selectedId}
@@ -852,6 +853,7 @@ const Index = () => {
                           />
                         ) : (
                           <NauticalChart
+                            ownName={unit?.name ?? "ARC ALM. PADILLA"}
                             contacts={visibleContacts}
                             filterDomain={t.key === "ALL" ? "all" : t.key}
                             selectedId={selectedId}

@@ -91,6 +91,7 @@ export function NauticalChart({
   filterDomain = "all",
   weapons = [],
   showWeaponRings: showWeaponRingsProp = true,
+  ownName = "ARC ALM. PADILLA",
 }: Props) {
   const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
   const showWeaponRings = localShowRings;
@@ -166,7 +167,7 @@ export function NauticalChart({
           {/* Own ship */}
           <Marker position={SHIP} icon={ShipIcon()}>
             <Tooltip permanent direction="right" offset={[10, 0]}>
-              <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#22c55e" }}>ARC-FRIGATE</span>
+              <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#22c55e" }}>{ownName}</span>
             </Tooltip>
           </Marker>
 

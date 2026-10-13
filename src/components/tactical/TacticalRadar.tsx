@@ -35,6 +35,7 @@ export function TacticalRadar({
   weapons = [],
   showWeaponRings = true,
   onToggleWeaponRings,
+  ownName = "ARC ALM. PADILLA",
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [showTrails, setShowTrails] = useState(true);
@@ -243,7 +244,7 @@ export function TacticalRadar({
           <g>
             <circle cx="200" cy="200" r="5" fill="hsl(var(--threat-friend))" />
             <circle cx="200" cy="200" r="9" fill="none" stroke="hsl(var(--threat-friend))" strokeWidth="1" />
-            <text x="208" y="204" fill="hsl(var(--threat-friend))" fontSize="9" fontFamily="JetBrains Mono">ARC-FRIGATE</text>
+            <text x="208" y="204" fill="hsl(var(--threat-friend))" fontSize="9" fontFamily="JetBrains Mono">{ownName}</text>
           </g>
 
           {/* Trails */}
@@ -322,7 +323,7 @@ export function TacticalRadar({
         </svg>
 
         {/* HUD overlay corners */}
-        <div className="absolute top-2 left-3 hud-label">PPI · ARC-FRIGATA</div>
+        <div className="absolute top-2 left-3 hud-label">PPI · {ownName}</div>
         <div className="absolute top-2 right-3 hud-label glow-cyan">RNG {rangeNm}NM</div>
         <div className="absolute bottom-2 left-3 hud-label">CONTACTS: <span className="hud-value text-primary">{filtered.length}</span></div>
         <div className="absolute bottom-2 right-3 hud-label">MODE: <span className="text-primary">AUTO</span></div>
