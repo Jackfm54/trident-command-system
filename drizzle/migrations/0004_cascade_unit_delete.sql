@@ -1,0 +1,2 @@
+ALTER TABLE public.unit_members DROP CONSTRAINT unit_members_unit_id_fkey, ADD CONSTRAINT unit_members_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.exercise_units(id) ON DELETE CASCADE;
+ALTER TABLE public.exercise_commands DROP CONSTRAINT exercise_commands_unit_id_fkey, ADD CONSTRAINT exercise_commands_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.exercise_units(id) ON DELETE SET NULL;

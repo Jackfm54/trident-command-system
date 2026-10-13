@@ -179,7 +179,12 @@ export default function Master() {
   };
 
   const removeUnit = async (u: Unit) => {
-    await supabase.from("exercise_units").delete().eq("id", u.id);
+    if (!confirm(`¿Eliminar el buque ${u.name} del ejercicio?`)) return;
+    await supabase.from("contacts").update({ target_unit_id: null }).eq("target_unit_id", u.id);
+    const { error } = await supabase.from("exercise_units").delete().eq("id", u.id);
+    if (error) return toast.error(error.message);
+    setUnits((prev: any[]) => prev.filter((x) => x.id !== u.id));
+    toast.success(`Buque ${u.name} eliminado`);
   };
 
   const setStatus = async (status: "running" | "ended") => {

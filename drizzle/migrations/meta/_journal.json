@@ -29,6 +29,13 @@
       "when": 1791828917458,
       "tag": "0003_station_commands",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791930504695,
+      "tag": "0004_cascade_unit_delete",
+      "breakpoints": true
     }
   ]
 }
