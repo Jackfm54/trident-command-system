@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { THREATS, PLATFORM_LABEL, waveFromThreats, attackerSeedAt, advanceToward, distTo, toXY, IMPACT_DAMAGE } from "@/lib/combatEngine";
 import { advanceContact, generateRandomContact } from "@/lib/simulator";
 import { useRef } from "react";
@@ -48,6 +49,7 @@ export default function Master() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [exId, setExId] = useState<string | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [toDelete, setToDelete] = useState<Unit | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<Scn[]>([]);
@@ -179,7 +181,7 @@ export default function Master() {
   };
 
   const removeUnit = async (u: Unit) => {
-    if (!confirm(`¿Eliminar el buque ${u.name} del ejercicio?`)) return;
+    setToDelete(null);
     await supabase.from("contacts").update({ target_unit_id: null }).eq("target_unit_id", u.id);
     const { error } = await supabase.from("exercise_units").delete().eq("id", u.id);
     if (error) return toast.error(error.message);
@@ -557,7 +559,7 @@ export default function Master() {
                       <div className="flex gap-1">
                         <Button size="sm" variant="destructive" disabled={ex.status !== "running" || u.status === "sunk"} onClick={() => launchRaid([u])} className="flex-1 font-mono text-[10px] h-7"><Rocket className="w-3 h-3 mr-1" />Raid</Button>
                         <Button size="sm" variant="outline" onClick={() => resetUnit(u)} className="flex-1 font-mono text-[10px] h-7">Reparar</Button>
-                        <Button size="sm" variant="ghost" onClick={() => removeUnit(u)} className="h-7 px-2"><Trash2 className="w-3 h-3" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => setToDelete(u)} className="h-7 px-2"><Trash2 className="w-3 h-3" /></Button>
                       </div>
                     </div>
                   );
@@ -619,6 +621,20 @@ export default function Master() {
 
         {!ex && <div className="hud-panel p-6 text-center text-xs font-mono text-muted-foreground">Cree un ejercicio para empezar.</div>}
       </main>
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent className="hud-panel border-primary/60">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display text-primary">Eliminar buque</AlertDialogTitle>
+            <AlertDialogDescription className="font-mono text-xs">
+              ¿Desea retirar el buque <span className="text-accent">{toDelete?.name}</span> del ejercicio? Sus puestos asignados también se eliminarán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-mono">Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDelete && removeUnit(toDelete)}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
