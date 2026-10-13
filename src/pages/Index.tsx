@@ -723,7 +723,7 @@ const Index = () => {
           <div className="flex items-center gap-3">
             <img src={logoAsset.url} alt="Logo Poseidón" className="w-16 h-16 rounded-full border border-primary/60 shadow-glow-amber object-cover" />
             <div>
-              <h1 className="font-display text-base text-primary glow-amber">SISTEMA TCM · ARC FRIGATA</h1>
+              <h1 className="font-display text-base text-primary glow-amber">SISTEMA TCM POSEIDÓN · ARC ALM. PADILLA</h1>
               <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-accent/80">
                 Tactical Combat Manager · AAW · ASuW · ASW · EW · IA Llama+YOLO
               </p>
