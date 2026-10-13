@@ -1,3 +1,4 @@
+import logoAsset from "@/assets/poseidon.jpeg.asset.json";
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,7 +44,8 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
       <form onSubmit={submit} className="hud-panel p-6 w-full max-w-sm space-y-3">
-        <h1 className="font-display text-primary glow-amber text-lg">SISTEMA TCM · ACCESO</h1>
+        <img src={logoAsset.url} alt="Logo Poseidón" className="w-28 h-28 mx-auto rounded-full border border-primary/60 shadow-glow-amber object-cover" />
+        <h1 className="font-display text-primary glow-amber text-lg text-center">SISTEMA TCM · ACCESO</h1>
         <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-accent/80">
           {mode === "in" ? "Ingreso de operador / instructor" : "Registro de nuevo operador"}
         </p>

@@ -1,3 +1,4 @@
+import logoAsset from "@/assets/poseidon.jpeg.asset.json";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -362,9 +363,12 @@ export default function Master() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-hud-bg/80 backdrop-blur sticky top-0 z-20 print:hidden">
         <div className="container py-2 flex items-center justify-between gap-4">
-          <div>
+          <div className="flex items-center gap-3">
+            <img src={logoAsset.url} alt="Logo Poseidón" className="w-10 h-10 rounded-full border border-primary/60 object-cover" />
+            <div>
             <h1 className="font-display text-base text-primary glow-amber">PUESTO MAESTRO · INSTRUCTOR</h1>
             <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-accent/80">Control de ejercicio multi-buque · {displayName}</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button asChild size="sm" variant="outline" className="font-mono text-xs"><Link to="/"><Monitor className="w-3.5 h-3.5 mr-1" />Consola</Link></Button>
