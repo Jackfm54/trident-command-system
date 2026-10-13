@@ -14,6 +14,7 @@ interface Props {
   weapons?: Weapon[];
   showWeaponRings?: boolean;
   onToggleWeaponRings?: () => void;
+  ownName?: string;
 }
 
 const RANGE_PRESETS = [5, 10, 20, 40, 80, 160];

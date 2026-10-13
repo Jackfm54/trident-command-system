@@ -12,6 +12,7 @@ interface Props {
   filterDomain?: Domain | "all";
   weapons?: Weapon[];
   showWeaponRings?: boolean;
+  ownName?: string;
 }
 
 // Own ship anchored off Cartagena, Colombia
