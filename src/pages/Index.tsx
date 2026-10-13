@@ -721,7 +721,7 @@ const Index = () => {
       <header className="border-b border-border bg-hud-bg/80 backdrop-blur sticky top-0 z-20">
         <div className="container py-2 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src={logoAsset.url} alt="Logo Poseidón" className="w-10 h-10 rounded-full border border-primary/60 shadow-glow-amber object-cover" />
+            <img src={logoAsset.url} alt="Logo Poseidón" className="w-16 h-16 rounded-full border border-primary/60 shadow-glow-amber object-cover" />
             <div>
               <h1 className="font-display text-base text-primary glow-amber">SISTEMA TCM · ARC FRIGATA</h1>
               <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-accent/80">
