@@ -569,7 +569,23 @@ export default function Master() {
 
             <aside className="xl:col-span-4 space-y-3">
               <div className="hud-panel p-3">
-                <div className="hud-label mb-2">Bitácora de toda la flota</div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="hud-label">Bitácora de toda la flota</div>
+                  <button
+                    title="Imprimir bitácora del ejercicio"
+                    className="flex items-center gap-1 text-[10px] font-mono uppercase text-accent hover:text-primary border border-border rounded px-2 py-0.5"
+                    onClick={() => {
+                      const w = window.open("", "_blank");
+                      if (!w) return toast.warning("Permita ventanas emergentes para imprimir");
+                      const esc = (s: string) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" } as any)[c]);
+                      const rows = [...events].reverse().map((e: any) => `<tr class="${e.severity}"><td>${new Date(e.created_at).toLocaleString("es-CO", { hour12: false })}</td><td>${esc(unitByScenario[e.scenario_id] ?? "?")}</td><td>${esc(e.domain)}</td><td>${esc(e.event_type)}</td><td>${esc(e.severity)}</td><td>${esc(e.message)}</td></tr>`).join("");
+                      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bitácora del ejercicio</title><style>body{font-family:monospace;font-size:11px;margin:16px;color:#111}h1{font-size:16px;margin:0}p{margin:2px 0 12px;color:#555}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px;text-align:left;vertical-align:top}th{background:#eee}tr{break-inside:avoid}.critical td{color:#b00}.warning td{color:#a60}@page{size:A4;margin:12mm}</style></head><body><h1>SISTEMA TCM POSEIDÓN · BITÁCORA DEL EJERCICIO</h1><p>Ejercicio: ${esc(ex?.name ?? "")} · Buques: ${esc(units.map((u) => u.name).join(", "))} · Impreso: ${new Date().toLocaleString("es-CO", { hour12: false })} · ${events.length} eventos</p><table><thead><tr><th>Hora</th><th>Buque</th><th>Dominio</th><th>Tipo</th><th>Severidad</th><th>Mensaje</th></tr></thead><tbody>${rows || '<tr><td colspan="6">Sin eventos</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
+                      w.document.close();
+                    }}
+                  >
+                    <Printer className="w-3 h-3" /> Imprimir
+                  </button>
+                </div>
                 <div className="space-y-1 max-h-[420px] overflow-y-auto">
                   {events.length === 0 && <div className="text-xs font-mono text-muted-foreground">Sin eventos.</div>}
                   {events.map((e) => (
