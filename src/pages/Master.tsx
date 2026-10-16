@@ -631,6 +631,16 @@ export default function Master() {
                 </div>
                 <p className="text-[9px] font-mono text-muted-foreground">"Ataca" solo aplica a misiles, drones kamikaze, lanchas kamikaze y torpedos; esos contactos irán directo contra el buque.</p>
                 <Button size="sm" onClick={saveScenario} className="w-full font-mono text-xs">Guardar escenario</Button>
+                <div className="hud-label pt-1">Escenarios creados</div>
+                <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                  {templates.length === 0 && <div className="text-[10px] font-mono text-muted-foreground">Sin escenarios.</div>}
+                  {templates.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between text-[10px] font-mono border border-border/50 px-1 py-0.5">
+                      <span className="truncate pr-1">{t.name}</span>
+                      <Button size="sm" variant="ghost" onClick={() => setToDeleteScn(t)} className="h-6 px-1.5"><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </aside>
           </div>
