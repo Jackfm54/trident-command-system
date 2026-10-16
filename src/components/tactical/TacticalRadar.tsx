@@ -275,6 +275,50 @@ export function TacticalRadar({
             );
           })}
 
+          {/* Friendly rounds in flight (own weapons) */}
+          {shots.map((s) => {
+            const target = filtered.find((c) => c.id === s.targetId);
+            if (!target) return null;
+            const cr = Math.min((target.range_nm ?? 0) * scale, 195);
+            const a = ((target.bearing ?? 0) * Math.PI) / 180;
+            const tx = 200 + cr * Math.sin(a);
+            const ty = 200 - cr * Math.cos(a);
+            const frac = Math.min(1, (Date.now() - s.firedAt) / s.tofMs);
+            const px = 200 + (tx - 200) * frac;
+            const py = 200 + (ty - 200) * frac;
+            const color = `hsl(${WEAPON_RING_COLOR[s.domain]})`;
+            const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
+            const fsz = s.wtype === "gun" || s.wtype === "ciws" ? 10 : 12;
+            return (
+              <g key={s.id}>
+                {/* fire vector from own ship to round */}
+                <line x1="200" y1="200" x2={px} y2={py} stroke={color} strokeWidth="1" strokeDasharray="3 2" opacity="0.6" />
+                <text
+                  x={px} y={py}
+                  fill={color}
+                  fontSize={fsz}
+                  fontFamily="JetBrains Mono"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+                >
+                  {symbol}
+                </text>
+                <text
+                  x={px} y={py - 9}
+                  fill={color}
+                  fontSize="6.5"
+                  fontFamily="JetBrains Mono"
+                  textAnchor="middle"
+                  style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 1.8 }}
+                >
+                  {s.acronym}
+                </text>
+              </g>
+            );
+          })}
+
           {/* Contacts */}
           {filtered.map((c) => {
             const rawCr = (c.range_nm ?? 0) * scale;
