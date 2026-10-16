@@ -220,6 +220,11 @@ export function TacticalRadar({
               <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.05" />
               <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.2" />
             </radialGradient>
+            <radialGradient id="shotFlame">
+              <stop offset="0%" stopColor="#fff" stopOpacity="1" />
+              <stop offset="45%" stopColor="#fde68a" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+            </radialGradient>
           </defs>
 
           {/* Range rings */}
