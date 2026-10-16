@@ -575,7 +575,7 @@ const Index = () => {
         });
         toast.warning(`Miss ${c.track_id} · reattack`);
       }
-    }, Math.min(4000, Math.max(800, tof * 100)));
+    }, flightMs);
   };
 
   const endTraining = (lost = false) => {
