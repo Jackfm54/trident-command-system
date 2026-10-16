@@ -828,7 +828,7 @@ const Index = () => {
       severity: "info",
       message: `Escenario activado: ${scn?.name}`,
     });
-    toast.success(tr('Escenario "{0}" activado', scn?.name));
+    toast.success(tr('Escenario "{0}" activado', translateText(scn?.name ?? "")));
   };
 
   const stop = async () => {

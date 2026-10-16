@@ -1099,7 +1099,7 @@ export default function Master() {
                     <option value="">{tr("Escenario: vacío")}</option>
                     {templates.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.name}
+                        {translateText(t.name)}
                       </option>
                     ))}
                   </select>
@@ -1151,7 +1151,7 @@ export default function Master() {
                       <option value="">{tr("Contactos aleatorios")}</option>
                       {templates.map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.name}
+                          {translateText(t.name)}
                         </option>
                       ))}
                     </select>
@@ -1598,7 +1598,7 @@ export default function Master() {
                       key={t.id}
                       className="flex items-center justify-between text-[10px] font-mono border border-border/50 px-1 py-0.5"
                     >
-                      <span className="truncate pr-1">{t.name}</span>
+                      <span className="truncate pr-1">{translateText(t.name)}</span>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1663,7 +1663,7 @@ export default function Master() {
             </AlertDialogTitle>
             <AlertDialogDescription className="font-mono text-xs">
               {tr("¿Desea eliminar el escenario")}{" "}
-              <span className="text-accent">{toDeleteScn?.name}</span>
+              <span className="text-accent">{translateText(toDeleteScn?.name ?? "")}</span>
               {tr("? Ya no podrá usarse para crear nuevos ejercicios.")}{" "}
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -1,4 +1,56 @@
 export const translations: Record<string, { en: string; fr: string }> = {
+  "Patrulla Caribe": {
+    en: "Caribbean Patrol",
+    fr: "Patrouille des Caraïbes",
+  },
+  "Ataque Saturado AAW": {
+    en: "AAW Saturation Attack",
+    fr: "Attaque de saturation AAW",
+  },
+  "Caza Submarina ASW": {
+    en: "ASW Submarine Hunt",
+    fr: "Chasse sous-marine ASW",
+  },
+  "Guerra Electrónica EW": {
+    en: "Electronic Warfare EW",
+    fr: "Guerre électronique EW",
+  },
+  "Enfrentamiento Superficie": {
+    en: "Surface Engagement",
+    fr: "Engagement de surface",
+  },
+  "Enjambre de Drones": {
+    en: "Drone Swarm",
+    fr: "Essaim de drones",
+  },
+  "Patrulla rutinaria en el Caribe colombiano, baja amenaza, contactos comerciales mixtos.": {
+    en: "Routine patrol in the Colombian Caribbean, low threat, mixed commercial contacts.",
+    fr: "Patrouille de routine dans les Caraïbes colombiennes, menace faible, contacts commerciaux mixtes.",
+  },
+  "Múltiples vampiros entrantes, misiles antibuque a baja altura desde diferentes ejes.": {
+    en: "Multiple inbound vampires, low-altitude anti-ship missiles from different axes.",
+    fr: "Multiples vampires en approche, missiles antinavires à basse altitude depuis différents axes.",
+  },
+  "Contacto submarino sospechoso a 8nm, requiere clasificación sonar y helicóptero embarcado.": {
+    en: "Suspicious submarine contact at 8 NM, requiring sonar classification and an embarked helicopter.",
+    fr: "Contact sous-marin suspect à 8 NM, nécessitant une classification sonar et un hélicoptère embarqué.",
+  },
+  "Ambiente denso con jamming, emisores hostiles y deception en banda X y S.": {
+    en: "Dense environment with jamming, hostile emitters and deception in X and S bands.",
+    fr: "Environnement dense avec brouillage, émetteurs hostiles et déception dans les bandes X et S.",
+  },
+  "Grupo de superficie hostil a 25nm, intercambio de fuego anti-superficie inminente.": {
+    en: "Hostile surface group at 25 NM, imminent exchange of anti-surface fire.",
+    fr: "Groupe de surface hostile à 25 NM, échange de tirs antisurface imminent.",
+  },
+  "Ataque coordinado multi-dominio: UAV kamikaze, USV suicidas y UUV de reconocimiento aproximándose simultáneamente.": {
+    en: "Coordinated multi-domain attack: kamikaze UAVs, suicide USVs and reconnaissance UUVs approaching simultaneously.",
+    fr: "Attaque multidomaine coordonnée : UAV kamikazes, USV suicides et UUV de reconnaissance en approche simultanée.",
+  },
+  "Escenario de ejercicio": {
+    en: "Exercise scenario",
+    fr: "Scénario d’exercice",
+  },
   "SISTEMA TCM POSEIDÓN · ACCESO": {
     en: "TCM POSEIDÓN SYSTEM · ACCESS",
     fr: "SYSTÈME TCM POSEIDÓN · ACCÈS",

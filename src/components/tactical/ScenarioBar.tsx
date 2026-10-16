@@ -1,4 +1,4 @@
-import { t as tr, useLanguage } from "@/lib/i18n";
+import { t as tr, translateText, useLanguage } from "@/lib/i18n";
 import { Scenario } from "@/types/tactical";
 import { Button } from "@/components/ui/button";
 import { Square, Plus, Brain } from "lucide-react";
@@ -38,7 +38,7 @@ export function ScenarioBar({
                 : "border-border text-foreground hover:border-accent hover:text-accent"
             }`}
           >
-            {s.name}
+            {translateText(s.name)}
           </button>
         );
       })}
