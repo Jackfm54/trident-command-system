@@ -50,6 +50,7 @@ export default function Master() {
   const [exId, setExId] = useState<string | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
   const [toDelete, setToDelete] = useState<Unit | null>(null);
+  const [toDeleteScn, setToDeleteScn] = useState<Scn | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<Scn[]>([]);
@@ -187,6 +188,14 @@ export default function Master() {
     if (error) return toast.error(error.message);
     setUnits((prev: any[]) => prev.filter((x) => x.id !== u.id));
     toast.success(`Buque ${u.name} eliminado`);
+  };
+
+  const removeScenario = async (s: Scn) => {
+    setToDeleteScn(null);
+    const { error } = await supabase.from("scenarios").delete().eq("id", s.id);
+    if (error) return toast.error(error.message);
+    setTemplates((prev) => prev.filter((x) => x.id !== s.id));
+    toast.success(`Escenario ${s.name} eliminado`);
   };
 
   const setStatus = async (status: "running" | "ended") => {
@@ -630,6 +639,16 @@ export default function Master() {
                 </div>
                 <p className="text-[9px] font-mono text-muted-foreground">"Ataca" solo aplica a misiles, drones kamikaze, lanchas kamikaze y torpedos; esos contactos irán directo contra el buque.</p>
                 <Button size="sm" onClick={saveScenario} className="w-full font-mono text-xs">Guardar escenario</Button>
+                <div className="hud-label pt-1">Escenarios creados</div>
+                <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                  {templates.length === 0 && <div className="text-[10px] font-mono text-muted-foreground">Sin escenarios.</div>}
+                  {templates.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between text-[10px] font-mono border border-border/50 px-1 py-0.5">
+                      <span className="truncate pr-1">{t.name}</span>
+                      <Button size="sm" variant="ghost" onClick={() => setToDeleteScn(t)} className="h-6 px-1.5"><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </aside>
           </div>
@@ -648,6 +667,21 @@ export default function Master() {
           <AlertDialogFooter>
             <AlertDialogCancel className="font-mono">Cancelar</AlertDialogCancel>
             <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDelete && removeUnit(toDelete)}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!toDeleteScn} onOpenChange={(o) => !o && setToDeleteScn(null)}>
+        <AlertDialogContent className="hud-panel border-primary/60">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display text-primary">Eliminar escenario</AlertDialogTitle>
+            <AlertDialogDescription className="font-mono text-xs">
+              ¿Desea eliminar el escenario <span className="text-accent">{toDeleteScn?.name}</span>? Ya no podrá usarse para crear nuevos ejercicios.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-mono">Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDeleteScn && removeScenario(toDeleteScn)}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
