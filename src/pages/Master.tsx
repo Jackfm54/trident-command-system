@@ -190,6 +190,14 @@ export default function Master() {
     toast.success(`Buque ${u.name} eliminado`);
   };
 
+  const removeScenario = async (s: Scn) => {
+    setToDeleteScn(null);
+    const { error } = await supabase.from("scenarios").delete().eq("id", s.id);
+    if (error) return toast.error(error.message);
+    setTemplates((prev) => prev.filter((x) => x.id !== s.id));
+    toast.success(`Escenario ${s.name} eliminado`);
+  };
+
   const setStatus = async (status: "running" | "ended") => {
     if (!ex || !user) return;
     await supabase.from("exercises").update(status === "running" ? { status, started_at: new Date().toISOString(), ended_at: null } : { status, ended_at: new Date().toISOString() }).eq("id", ex.id);
@@ -659,6 +667,21 @@ export default function Master() {
           <AlertDialogFooter>
             <AlertDialogCancel className="font-mono">Cancelar</AlertDialogCancel>
             <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDelete && removeUnit(toDelete)}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!toDeleteScn} onOpenChange={(o) => !o && setToDeleteScn(null)}>
+        <AlertDialogContent className="hud-panel border-primary/60">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display text-primary">Eliminar escenario</AlertDialogTitle>
+            <AlertDialogDescription className="font-mono text-xs">
+              ¿Desea eliminar el escenario <span className="text-accent">{toDeleteScn?.name}</span>? Ya no podrá usarse para crear nuevos ejercicios.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-mono">Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDeleteScn && removeScenario(toDeleteScn)}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
