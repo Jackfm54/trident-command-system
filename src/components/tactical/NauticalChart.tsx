@@ -224,7 +224,8 @@ export function NauticalChart({
             const frac = Math.min(1, (Date.now() - s.firedAt) / s.tofMs);
             const ppos: [number, number] = [SHIP[0] + (tpos[0] - SHIP[0]) * frac, SHIP[1] + (tpos[1] - SHIP[1]) * frac];
             const color = DOMAIN_HEX[s.domain];
-            const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
+            // Flight direction for rotating the glyph (0° = north)
+            const angleDeg = (Math.atan2(tpos[1] - SHIP[1], tpos[0] - SHIP[0]) * 180) / Math.PI;
             // Wake/trail for the round in flight (same style as contact trails on the PPI)
             const smap = shotTrailsRef.current;
             const sarr = smap.get(s.id) ?? [];
@@ -253,9 +254,9 @@ export function NauticalChart({
                   position={ppos}
                   icon={L.divIcon({
                     className: "",
-                    html: `<div style="font-family:'JetBrains Mono',monospace;font-weight:bold;font-size:14px;color:${color};text-shadow:0 0 6px ${color},0 0 2px #000;line-height:1;">${symbol}</div>`,
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8],
+                    html: `<div style="transform:rotate(${angleDeg}deg);line-height:0;">${shotGlyphSvg(s.wtype, color)}</div>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18],
                   })}
                 >
                   <Tooltip permanent direction="right" offset={[8, 0]} opacity={0.9}>
