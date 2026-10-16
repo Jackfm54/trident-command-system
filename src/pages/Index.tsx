@@ -542,6 +542,7 @@ const Index = () => {
     if (!auto) toast.error(`${w.acronym} fired @ ${c.track_id}`);
 
     setTimeout(async () => {
+      setShots((s) => s.filter((x) => x.id !== shotId));
       engagedRef.current.delete(c.id);
       if (!contactsRef.current.some((x) => x.id === c.id)) return; // already impacted/destroyed
       const hit = Math.random() < w.pk;
