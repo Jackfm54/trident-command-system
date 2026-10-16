@@ -856,6 +856,7 @@ const Index = () => {
                             weapons={weapons}
                             showWeaponRings={showWeaponRings}
                             onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
+                            shots={shots}
                           />
                         ) : (
                           <NauticalChart
@@ -866,6 +867,7 @@ const Index = () => {
                             onSelect={setSelectedId}
                             weapons={weapons}
                             showWeaponRings={showWeaponRings}
+                            shots={shots}
                           />
                         )}
                       </div>
