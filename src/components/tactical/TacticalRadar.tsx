@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Contact, Domain, CLASSIFICATION_META } from "@/types/tactical";
+import { Contact, Domain, CLASSIFICATION_META, Munition } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2, Footprints } from "lucide-react";
@@ -15,6 +15,7 @@ interface Props {
   showWeaponRings?: boolean;
   onToggleWeaponRings?: () => void;
   ownName?: string;
+  munitions?: Munition[];
 }
 
 const RANGE_PRESETS = [5, 10, 20, 40, 80, 160];
@@ -37,6 +38,7 @@ export function TacticalRadar({
   showWeaponRings = true,
   onToggleWeaponRings,
   ownName = "ARC ALM. PADILLA",
+  munitions = [],
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [showTrails, setShowTrails] = useState(true);
@@ -69,6 +71,13 @@ export function TacticalRadar({
     Array.from(map.keys()).forEach((k) => { if (!seen.has(k)) map.delete(k); });
     force((n) => n + 1);
   }, [contacts, rangeNm, filterDomain]);
+
+  // Animate munitions in flight
+  useEffect(() => {
+    if (!munitions.length) return;
+    const id = window.setInterval(() => force((n) => n + 1), 80);
+    return () => window.clearInterval(id);
+  }, [munitions.length]);
 
   const ringStep = rangeNm / 4;
   const rings = [1, 2, 3, 4].map((i) => ({ nm: ringStep * i, r: scale * ringStep * i }));
@@ -261,6 +270,84 @@ export function TacticalRadar({
                 {trail.slice(-6).map((p, i) => (
                   <circle key={i} cx={p.x} cy={p.y} r={0.8 + i * 0.25} fill={color} opacity={0.15 + i * 0.12} />
                 ))}
+              </g>
+            );
+          })}
+
+          {/* Munitions in flight */}
+          {munitions.map((m) => {
+            const now2 = Date.now();
+            const total = Math.max(1, m.end_at - m.start_at);
+            const p = Math.min(1, (now2 - m.start_at) / total);
+            const color = `hsl(${WEAPON_RING_COLOR[m.domain]})`;
+            const a = ((m.to_bearing ?? 0) * Math.PI) / 180;
+            const cr = Math.min(m.to_range * p * scale, 195);
+            const x = 200 + cr * Math.sin(a);
+            const y = 200 - cr * Math.cos(a);
+            const tcr = Math.min(m.to_range * scale, 195);
+            const tx = 200 + tcr * Math.sin(a);
+            const ty = 200 - tcr * Math.cos(a);
+            if (m.outcome !== "inflight") {
+              const q = Math.min(1, (now2 - m.end_at) / 1500);
+              if (m.outcome === "splash") {
+                return (
+                  <g key={m.id} opacity={1 - q}>
+                    <circle cx={tx} cy={ty} r={4 + q * 18} fill="none" stroke={color} strokeWidth={Math.max(0.3, 2 - q * 2)} />
+                    <circle cx={tx} cy={ty} r={2 + q * 8} fill={color} opacity={0.6 * (1 - q)} />
+                    {[0, 45, 90, 135, 180, 225, 270, 315].map((d) => (
+                      <line key={d} x1={tx} y1={ty}
+                        x2={tx + (6 + q * 14) * Math.sin((d * Math.PI) / 180)}
+                        y2={ty - (6 + q * 14) * Math.cos((d * Math.PI) / 180)}
+                        stroke={color} strokeWidth="0.8" />
+                    ))}
+                    <text x={tx} y={ty - 12} fill={color} fontSize="7" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="middle">SPLASH</text>
+                  </g>
+                );
+              }
+              return (
+                <g key={m.id} opacity={1 - q}>
+                  <text x={tx} y={ty + 4} fill={color} fontSize="12" fontFamily="JetBrains Mono" textAnchor="middle">✕</text>
+                  <text x={tx} y={ty - 8} fill={color} fontSize="7" fontFamily="JetBrains Mono" textAnchor="middle">MISS</text>
+                </g>
+              );
+            }
+            // In flight — tracers for guns
+            if (m.weapon_type === "gun" || m.weapon_type === "ciws") {
+              const tracers = [0, 0.06, 0.12, 0.18].map((off) => Math.max(0, p - off));
+              return (
+                <g key={m.id}>
+                  {tracers.map((tp, i) => {
+                    const r2 = Math.min(m.to_range * tp * scale, 195);
+                    return <circle key={i} cx={200 + r2 * Math.sin(a)} cy={200 - r2 * Math.cos(a)} r={1.6 - i * 0.3} fill={color} opacity={0.95 - i * 0.2} />;
+                  })}
+                </g>
+              );
+            }
+            // Decoy / EW — burst cloud at target
+            if (m.weapon_type === "decoy" || m.weapon_type === "ew") {
+              return (
+                <g key={m.id}>
+                  <line x1="200" y1="200" x2={x} y2={y} stroke={color} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+                  {[0, 60, 120, 180, 240, 300].map((d) => (
+                    <circle key={d}
+                      cx={x + 4 * Math.sin(((d + now2 / 20) * Math.PI) / 180)}
+                      cy={y - 4 * Math.cos(((d + now2 / 20) * Math.PI) / 180)}
+                      r="1" fill={color} opacity="0.8" />
+                  ))}
+                  <text x={x} y={y - 7} fill={color} fontSize="7" fontFamily="JetBrains Mono" textAnchor="middle">{m.acronym}</text>
+                </g>
+              );
+            }
+            // Missile / torpedo / rocket — guided vector
+            const dash = m.weapon_type === "torpedo" ? "3 3" : undefined;
+            return (
+              <g key={m.id}>
+                <line x1="200" y1="200" x2={x} y2={y} stroke={color} strokeWidth={m.weapon_type === "torpedo" ? 0.8 : 1} strokeDasharray={dash} opacity="0.45" />
+                <g transform={`translate(${x} ${y}) rotate(${m.to_bearing ?? 0})`}>
+                  <path d="M 0 -4 L 2.5 3 L 0 1.5 L -2.5 3 Z" fill={color} style={{ filter: `drop-shadow(0 0 3px ${color})` }} />
+                </g>
+                <text x={x + 6} y={y - 4} fill={color} fontSize="7" fontFamily="JetBrains Mono" fontWeight="bold"
+                  style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 1.5 }}>{m.acronym}</text>
               </g>
             );
           })}

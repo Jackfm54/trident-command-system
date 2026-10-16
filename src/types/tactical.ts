@@ -29,6 +29,19 @@ export interface Scenario {
   threat_level: string;
 }
 
+/** Own-ship round/missile in flight toward a target (PPI/chart animation). Positions relative to own ship. */
+export interface Munition {
+  id: string;
+  acronym: string;
+  weapon_type: "missile" | "gun" | "torpedo" | "ciws" | "decoy" | "ew" | "rocket";
+  domain: Domain;
+  to_bearing: number;
+  to_range: number;
+  start_at: number;
+  end_at: number;
+  outcome: "inflight" | "splash" | "miss";
+}
+
 export interface TacticalEvent {
   id: string;
   scenario_id: string | null;
