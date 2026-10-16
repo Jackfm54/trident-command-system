@@ -97,6 +97,7 @@ export function NauticalChart({
   shots = [],
 }: Props) {
   const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
+  const shotTrailsRef = useRef<Map<string, [number, number][]>>(new Map());
 
   // Smooth animation tick while friendly rounds are in flight
   const [, setTick] = useState(0);
@@ -192,9 +193,30 @@ export function NauticalChart({
             const ppos: [number, number] = [SHIP[0] + (tpos[0] - SHIP[0]) * frac, SHIP[1] + (tpos[1] - SHIP[1]) * frac];
             const color = DOMAIN_HEX[s.domain];
             const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
+            // Wake/trail for the round in flight (same style as contact trails on the PPI)
+            const smap = shotTrailsRef.current;
+            const sarr = smap.get(s.id) ?? [];
+            const slast = sarr[sarr.length - 1];
+            if (!slast || Math.abs(slast[0] - ppos[0]) + Math.abs(slast[1] - ppos[1]) > 1e-6) {
+              sarr.push(ppos);
+              while (sarr.length > 25) sarr.shift();
+              smap.set(s.id, sarr);
+            }
+            Array.from(smap.keys()).forEach((k) => { if (!shots.some((sh) => sh.id === k)) smap.delete(k); });
             return (
               <Fragment key={s.id}>
                 <Polyline positions={[SHIP, ppos]} pathOptions={{ color, weight: 1.5, opacity: 0.6, dashArray: "4 3" }} />
+                {sarr.length >= 2 && (
+                  <Polyline positions={sarr} pathOptions={{ color, weight: 1, opacity: 0.55, dashArray: "2 3" }} />
+                )}
+                {sarr.slice(-6).map((p, i) => (
+                  <CircleMarker
+                    key={i}
+                    center={p}
+                    radius={1.5 + i * 0.6}
+                    pathOptions={{ color, weight: 0, fillColor: color, fillOpacity: 0.15 + i * 0.12 }}
+                  />
+                ))}
                 <Marker
                   position={ppos}
                   icon={L.divIcon({
