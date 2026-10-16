@@ -1,3 +1,4 @@
+import { t, translateText, locale, useLanguage } from "@/lib/i18n";
 import { useMemo } from "react";
 import { Contact, CLASSIFICATION_META } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function EngagementDialog({ open, contact, weapons, onClose, onFire }: Props) {
+  useLanguage();
   const recommended = useMemo(() => {
     if (!contact) return null;
     const valid = weapons.filter((w) => w.domain === contact.domain && w.ammo > 0 && (contact.range_nm ?? 0) <= w.range_nm);
@@ -28,27 +30,26 @@ export function EngagementDialog({ open, contact, weapons, onClose, onFire }: Pr
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="hud-panel max-w-2xl bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="font-display text-primary glow-amber flex items-center gap-2">
-            <Crosshair className="w-5 h-5" />
-            TEWA · Asignación de Arma
-          </DialogTitle>
-          <DialogDescription className="font-mono text-xs">
+       {t("")} <DialogContent className="hud-panel max-w-2xl bg-card border-border">
+         {t("")} <DialogHeader>
+           {t("")} <DialogTitle className="font-display text-primary glow-amber flex items-center gap-2">
+             {t("")} <Crosshair className="w-5 h-5" />
+             {t("TEWA · Asignación de Arma")} </DialogTitle>
+           {t("")} <DialogDescription className="font-mono text-xs">
             Track <span style={{ color: `hsl(var(--${meta.color}))` }}>{contact.track_id}</span> · {contact.platform_type ?? "?"} ·
             BRG {Math.round(contact.bearing ?? 0)}° / RNG {(contact.range_nm ?? 0).toFixed(1)}nm / SPD {Math.round(contact.speed_kts ?? 0)}kts
           </DialogDescription>
-        </DialogHeader>
+         {t("")} </DialogHeader>
 
-        {recommended && (
+         {t("")} {recommended && (
           <div className="border border-accent/60 bg-accent/10 p-2 font-mono text-xs">
-            <div className="hud-label mb-1">TEWA Recomienda</div>
-            <span className="text-accent">{recommended.acronym}</span> · pk {Math.round(recommended.pk * 100)}% · ToF {(((contact.range_nm ?? 0) / Math.max(1, recommended.speed_kts)) * 3600).toFixed(1)}s
+             {t("")} <div className="hud-label mb-1">{t("TEWA Recomienda")}</div>
+             {t("")} <span className="text-accent">{recommended.acronym}</span> · pk {Math.round(recommended.pk * 100)}% · ToF {(((contact.range_nm ?? 0) / Math.max(1, recommended.speed_kts)) * 3600).toFixed(1)}s
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
-          {valid.map((w) => {
+         {t("")} <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
+           {t("")} {valid.map((w) => {
             const inRange = (contact.range_nm ?? 0) <= w.range_nm;
             const empty = w.ammo === 0;
             const tof = ((contact.range_nm ?? 0) / Math.max(1, w.speed_kts)) * 3600;
@@ -63,27 +64,27 @@ export function EngagementDialog({ open, contact, weapons, onClose, onFire }: Pr
                     : "border-border hover:border-primary"
                 } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-primary font-bold flex items-center gap-1">
-                    <Rocket className="w-3 h-3" /> {w.acronym}
-                  </span>
-                  <span className="text-foreground">{w.ammo}/{w.max_ammo}</span>
-                </div>
-                <div className="text-muted-foreground text-[10px]">{w.name}</div>
-                <div className="grid grid-cols-3 gap-1 mt-1 text-[10px]">
-                  <span>RNG <span className={inRange ? "text-threat-friend" : "text-destructive"}>{w.range_nm}nm</span></span>
-                  <span>PK <span className="text-foreground">{Math.round(w.pk * 100)}%</span></span>
-                  <span>ToF <span className="text-foreground">{tof < 600 ? tof.toFixed(0) + "s" : "—"}</span></span>
-                </div>
-                {!inRange && <div className="text-[9px] text-destructive mt-1">FUERA DE ALCANCE</div>}
-                {empty && <div className="text-[9px] text-destructive mt-1">SIN MUNICIÓN</div>}
-              </button>
+                 {t("")} <div className="flex items-center justify-between mb-1">
+                   {t("")} <span className="text-primary font-bold flex items-center gap-1">
+                     {t("")} <Rocket className="w-3 h-3" />  {t("")} {w.acronym}
+                   {t("")} </span>
+                   {t("")} <span className="text-foreground">{w.ammo}/{w.max_ammo}</span>
+                 {t("")} </div>
+                 {t("")} <div className="text-muted-foreground text-[10px]">{translateText(w.name)}</div>
+                 {t("")} <div className="grid grid-cols-3 gap-1 mt-1 text-[10px]">
+                   {t("")} <span>RNG <span className={inRange ? "text-threat-friend" : "text-destructive"}>{w.range_nm}nm</span></span>
+                   {t("")} <span>PK <span className="text-foreground">{Math.round(w.pk * 100)}%</span></span>
+                   {t("")} <span>ToF <span className="text-foreground">{tof < 600 ? tof.toFixed(0) + "s" : "—"}</span></span>
+                 {t("")} </div>
+                 {t("")} {!inRange && <div className="text-[9px] text-destructive mt-1">{t("FUERA DE ALCANCE")}</div>}
+                 {t("")} {empty && <div className="text-[9px] text-destructive mt-1">{t("SIN MUNICIÓN")}</div>}
+               {t("")} </button>
             );
           })}
-        </div>
+         {t("")} </div>
 
-        <Button variant="outline" onClick={onClose} className="font-mono uppercase">Cancelar</Button>
-      </DialogContent>
-    </Dialog>
+         {t("")} <Button variant="outline" onClick={onClose} className="font-mono uppercase">{t("Cancelar")}</Button>
+       {t("")} </DialogContent>
+     {t("")} </Dialog>
   );
 }

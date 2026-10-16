@@ -1,3 +1,4 @@
+import { t, translateText, locale, useLanguage } from "@/lib/i18n";
 import { Sensor } from "@/lib/combatSystems";
 import { Radar, Eye, Radio, Waves, Antenna, Wifi } from "lucide-react";
 
@@ -22,35 +23,36 @@ interface Props {
 }
 
 export function SensorsPanel({ sensors, onToggle }: Props) {
+  useLanguage();
   return (
     <div className="hud-panel p-3 space-y-1.5">
-      <div className="flex items-center justify-between mb-1">
-        <span className="hud-label">Sensores · Fusión Multi-Dominio</span>
-        <span className="hud-label glow-cyan animate-flicker">RX</span>
-      </div>
-      {sensors.map((s) => {
+       {t("")} <div className="flex items-center justify-between mb-1">
+         {t("")} <span className="hud-label">{t("Sensores · Fusión Multi-Dominio")}</span>
+         {t("")} <span className="hud-label glow-cyan animate-flicker">RX</span>
+       {t("")} </div>
+       {t("")} {sensors.map((s) => {
         const Icon = ICONS[s.type as keyof typeof ICONS] ?? Radio;
         return (
           <button
             key={s.id}
             onClick={() => onToggle(s.id)}
             className="w-full text-left border border-border/60 hover:border-accent/60 transition-colors p-1.5 flex items-center gap-2 group"
-            title={s.description}
+            title={translateText(s.description)}
           >
-            <Icon className={`w-4 h-4 ${STATUS_COLOR[s.status]}`} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between font-mono text-[11px]">
-                <span className="text-foreground truncate">{s.acronym}</span>
-                <span className={`text-[9px] uppercase ${STATUS_COLOR[s.status]}`}>{s.status}</span>
-              </div>
-              <div className="text-[9px] font-mono text-muted-foreground flex justify-between">
-                <span className="truncate">{s.mode}</span>
-                <span>{s.range_nm}nm</span>
-              </div>
-            </div>
-          </button>
+             {t("")} <Icon className={`w-4 h-4 ${STATUS_COLOR[s.status]}`} />
+             {t("")} <div className="flex-1 min-w-0">
+               {t("")} <div className="flex items-center justify-between font-mono text-[11px]">
+                 {t("")} <span className="text-foreground truncate">{s.acronym}</span>
+                 {t("")} <span className={`text-[9px] uppercase ${STATUS_COLOR[s.status]}`}>{translateText(s.status)}</span>
+               {t("")} </div>
+               {t("")} <div className="text-[9px] font-mono text-muted-foreground flex justify-between">
+                 {t("")} <span className="truncate">{translateText(s.mode)}</span>
+                 {t("")} <span>{s.range_nm}nm</span>
+               {t("")} </div>
+             {t("")} </div>
+           {t("")} </button>
         );
       })}
-    </div>
+     {t("")} </div>
   );
 }

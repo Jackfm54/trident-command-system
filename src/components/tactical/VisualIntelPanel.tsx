@@ -1,3 +1,4 @@
+import { t, translateText, locale, useLanguage } from "@/lib/i18n";
 import { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ const CLASS_COLOR: Record<string, string> = {
 const SENSORS = ["EO/IR Bow", "EO/IR Mast", "SAR Strip", "ISAR", "Periscope EO"];
 
 export function VisualIntelPanel({ contacts, onSelectTrack, onApplyClassification }: Props) {
+  useLanguage();
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgB64, setImgB64] = useState<string | null>(null);
   const [imgMime, setImgMime] = useState<string>("image/jpeg");
@@ -71,7 +73,7 @@ export function VisualIntelPanel({ contacts, onSelectTrack, onApplyClassificatio
 
   const analyze = async () => {
     if (!imgB64) {
-      toast.warning("Carga una imagen del sensor primero");
+      toast.warning(t("Carga una imagen del sensor primero"));
       return;
     }
     setLoading(true);
@@ -98,7 +100,7 @@ export function VisualIntelPanel({ contacts, onSelectTrack, onApplyClassificatio
       const r = data?.result as VisualReport;
       if (!r) throw new Error("Sin reporte");
       setReport(r);
-      toast.success(`Visual ID · ${r.detections.length} detecciones · ${r.overall_threat_level.toUpperCase()}`);
+      toast.success(t("Visual ID · {0} detecciones · {1}", r.detections.length, r.overall_threat_level.toUpperCase()));
     } catch (e: any) {
       toast.error(e?.message ?? "Error de IA visual");
     } finally {
@@ -108,28 +110,26 @@ export function VisualIntelPanel({ contacts, onSelectTrack, onApplyClassificatio
 
   return (
     <Card className="hud-panel p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Camera className="w-4 h-4 text-primary glow-amber" />
-          <span className="hud-label">VISUAL ID · Gemini 2.5 Pro Vision</span>
-        </div>
-        <Badge variant="outline" className="font-mono text-[9px] border-accent text-accent">
-          <Sparkles className="w-3 h-3 mr-1" />MULTIMODAL AI
-        </Badge>
-      </div>
+       {t("")} <div className="flex items-center justify-between">
+         {t("")} <div className="flex items-center gap-2">
+           {t("")} <Camera className="w-4 h-4 text-primary glow-amber" />
+           {t("")} <span className="hud-label">{t("VISUAL ID · Gemini 2.5 Pro Vision")}</span>
+         {t("")} </div>
+         {t("")} <Badge variant="outline" className="font-mono text-[9px] border-accent text-accent">
+           {t("")} <Sparkles className="w-3 h-3 mr-1" />{t("MULTIMODAL AI")} </Badge>
+       {t("")} </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <select
+       {t("")} <div className="flex flex-wrap items-center gap-2">
+         {t("")} <select
           value={sensor}
           onChange={(e) => setSensor(e.target.value)}
           className="bg-card border border-border rounded px-2 py-1 text-xs font-mono text-foreground"
         >
-          {SENSORS.map((s) => <option key={s}>{s}</option>)}
-        </select>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-7 text-xs">
-          <Upload className="w-3 h-3 mr-1" /> Cargar imagen
-        </Button>
-        <input
+           {t("")} {SENSORS.map((s) => <option key={s}>{s}</option>)}
+         {t("")} </select>
+         {t("")} <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-7 text-xs">
+           {t("")} <Upload className="w-3 h-3 mr-1" />  {t("Cargar imagen")} </Button>
+         {t("")} <input
           ref={fileRef}
           type="file"
           accept="image/*"
@@ -137,18 +137,18 @@ export function VisualIntelPanel({ contacts, onSelectTrack, onApplyClassificatio
           className="hidden"
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
-        <Button size="sm" onClick={analyze} disabled={!imgB64 || loading} className="h-7 text-xs bg-primary text-primary-foreground">
-          {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Eye className="w-3 h-3 mr-1" />}
-          {loading ? "Analizando..." : "Analizar con IA"}
-        </Button>
-      </div>
+         {t("")} <Button size="sm" onClick={analyze} disabled={!imgB64 || loading} className="h-7 text-xs bg-primary text-primary-foreground">
+           {t("")} {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Eye className="w-3 h-3 mr-1" />}
+           {t("")} {loading ? t("Analizando...") : t("Analizar con IA")}
+         {t("")} </Button>
+       {t("")} </div>
 
-      {/* Image with bbox overlay */}
-      <div className="relative rounded border border-border overflow-hidden bg-black/40 aspect-video flex items-center justify-center">
-        {imgUrl ? (
+       {t("")} {/* Image with bbox overlay */}
+       {t("")} <div className="relative rounded border border-border overflow-hidden bg-black/40 aspect-video flex items-center justify-center">
+         {t("")} {imgUrl ? (
           <>
-            <img src={imgUrl} alt="sensor" className="absolute inset-0 w-full h-full object-contain" />
-            {report?.detections.map((d, i) => {
+             {t("")} <img src={imgUrl} alt="sensor" className="absolute inset-0 w-full h-full object-contain" />
+             {t("")} {report?.detections.map((d, i) => {
               if (!d.bbox_norm || d.bbox_norm.length !== 4) return null;
               const [x, y, w, h] = d.bbox_norm;
               const color =
@@ -169,30 +169,29 @@ export function VisualIntelPanel({ contacts, onSelectTrack, onApplyClassificatio
                     boxShadow: `0 0 8px ${color}`,
                   }}
                 >
-                  <div
+                   {t("")} <div
                     className="absolute -top-5 left-0 px-1.5 py-0.5 whitespace-nowrap"
                     style={{ background: color, color: "#000" }}
                   >
-                    {d.label} · {(d.confidence * 100).toFixed(0)}%
+                     {t("")} {d.label} · {(d.confidence * 100).toFixed(0)}%
                   </div>
-                </div>
+                 {t("")} </div>
               );
             })}
-          </>
+           {t("")} </>
         ) : (
           <div className="text-center text-muted-foreground text-xs font-mono p-6">
-            <Camera className="w-10 h-10 mx-auto mb-2 opacity-40" />
-            Carga imagen EO/IR/SAR para análisis IA
-          </div>
+             {t("")} <Camera className="w-10 h-10 mx-auto mb-2 opacity-40" />
+             {t("Carga imagen EO/IR/SAR para análisis IA")} </div>
         )}
-      </div>
+       {t("")} </div>
 
-      {report && (
+       {t("")} {report && (
         <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
-          <div className="hud-panel p-2 text-xs">
-            <div className="flex items-center justify-between mb-1">
-              <span className="hud-label">SCENE INTEL</span>
-              <Badge
+           {t("")} <div className="hud-panel p-2 text-xs">
+             {t("")} <div className="flex items-center justify-between mb-1">
+               {t("")} <span className="hud-label">{t("SCENE INTEL")}</span>
+               {t("")} <Badge
                 variant="outline"
                 className={`font-mono text-[10px] ${
                   report.overall_threat_level === "critical" ? "border-threat-hostile text-threat-hostile" :
@@ -201,85 +200,82 @@ export function VisualIntelPanel({ contacts, onSelectTrack, onApplyClassificatio
                   "border-threat-friend text-threat-friend"
                 }`}
               >
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                {report.overall_threat_level.toUpperCase()} · COND {report.recommended_alert_condition.toUpperCase()}
-              </Badge>
-            </div>
-            <p className="text-foreground/90">{report.scene_summary}</p>
-            {report.sea_state && (
+                 {t("")} <AlertTriangle className="w-3 h-3 mr-1" />
+                 {t("")} {t(report.overall_threat_level).toUpperCase()} · COND {t(report.recommended_alert_condition).toUpperCase()}
+               {t("")} </Badge>
+             {t("")} </div>
+             {t("")} <p className="text-foreground/90">{report.scene_summary}</p>
+             {t("")} {report.sea_state && (
               <p className="text-muted-foreground text-[10px] mt-1">{report.sea_state}</p>
             )}
-          </div>
+           {t("")} </div>
 
-          {report.detections.map((d, i) => {
+           {t("")} {report.detections.map((d, i) => {
             const correlated = d.correlated_track_id && contacts.find((c) => c.track_id === d.correlated_track_id);
             return (
               <div key={i} className={`hud-panel p-2 border-l-2 ${CLASS_COLOR[d.classification]}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-foreground">{d.label}</span>
-                      <Badge variant="outline" className={`text-[9px] font-mono ${CLASS_COLOR[d.classification]}`}>
-                        {d.classification.toUpperCase()}
-                      </Badge>
-                      <span className="text-[9px] font-mono text-muted-foreground uppercase">{d.domain}</span>
-                      <span className="text-[9px] font-mono text-accent">conf {(d.confidence * 100).toFixed(0)}%</span>
-                      <span className={`text-[9px] font-mono ${d.threat_score >= 7 ? "text-threat-hostile" : d.threat_score >= 4 ? "text-orange-400" : "text-threat-friend"}`}>
+                 {t("")} <div className="flex items-start justify-between gap-2">
+                   {t("")} <div className="flex-1 min-w-0">
+                     {t("")} <div className="flex items-center gap-2 flex-wrap">
+                       {t("")} <span className="font-mono text-xs font-bold text-foreground">{d.label}</span>
+                       {t("")} <Badge variant="outline" className={`text-[9px] font-mono ${CLASS_COLOR[d.classification]}`}>
+                         {t("")} {t(d.classification).toUpperCase()}
+                       {t("")} </Badge>
+                       {t("")} <span className="text-[9px] font-mono text-muted-foreground uppercase">{d.domain}</span>
+                       {t("")} <span className="text-[9px] font-mono text-accent">conf {(d.confidence * 100).toFixed(0)}%</span>
+                       {t("")} <span className={`text-[9px] font-mono ${d.threat_score >= 7 ? "text-threat-hostile" : d.threat_score >= 4 ? "text-orange-400" : "text-threat-friend"}`}>
                         T{d.threat_score.toFixed(1)}
-                      </span>
-                    </div>
-                    {(d.visible_armament || d.estimated_length_m || d.flag_or_markings) && (
+                       {t("")} </span>
+                     {t("")} </div>
+                     {t("")} {(d.visible_armament || d.estimated_length_m || d.flag_or_markings) && (
                       <div className="text-[10px] font-mono text-muted-foreground mt-1 space-x-2">
-                        {d.estimated_length_m && <span>L≈{d.estimated_length_m}m</span>}
-                        {d.visible_armament && <span>· ARM: {d.visible_armament}</span>}
-                        {d.flag_or_markings && <span>· {d.flag_or_markings}</span>}
-                      </div>
+                         {t("")} {d.estimated_length_m && <span>L≈{d.estimated_length_m}m</span>}
+                         {t("")} {d.visible_armament && <span>· ARM: {d.visible_armament}</span>}
+                         {t("")} {d.flag_or_markings && <span>· {d.flag_or_markings}</span>}
+                       {t("")} </div>
                     )}
-                    {d.behavior && (
+                     {t("")} {d.behavior && (
                       <div className="text-[10px] font-mono text-foreground/80 mt-0.5">→ {d.behavior}</div>
                     )}
-                    <div className="text-[10px] font-mono text-primary mt-1">
+                     {t("")} <div className="text-[10px] font-mono text-primary mt-1">
                       ROE: {d.recommended_action}
-                    </div>
-                    {correlated ? (
+                     {t("")} </div>
+                     {t("")} {correlated ? (
                       <button
                         onClick={() => onSelectTrack?.(correlated.id)}
                         className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-background"
                       >
-                        <Crosshair className="w-3 h-3" />
-                        MATCH → {correlated.track_id}
-                      </button>
+                         {t("")} <Crosshair className="w-3 h-3" />
+                         {t("MATCH →")} {correlated.track_id}
+                       {t("")} </button>
                     ) : d.correlated_track_id ? (
                       <div className="text-[10px] font-mono text-muted-foreground mt-1">
-                        Sugerido: {d.correlated_track_id} (sin match en CMS)
-                      </div>
+                         {t("Sugerido:")} {d.correlated_track_id}  {t("(sin match en CMS)")} </div>
                     ) : (
                       <div className="text-[10px] font-mono text-muted-foreground mt-1">
-                        Sin correlación con tracks activos
-                      </div>
+                         {t("Sin correlación con tracks activos")} </div>
                     )}
-                    {d.correlation_reasoning && (
+                     {t("")} {d.correlation_reasoning && (
                       <div className="text-[10px] font-mono text-muted-foreground/80 italic mt-0.5">
-                        {d.correlation_reasoning}
-                      </div>
+                         {t("")} {d.correlation_reasoning}
+                       {t("")} </div>
                     )}
-                  </div>
-                  {correlated && onApplyClassification && (
+                   {t("")} </div>
+                   {t("")} {correlated && onApplyClassification && (
                     <Button
                       size="sm"
                       variant="outline"
                       className="h-6 text-[10px] font-mono"
                       onClick={() => onApplyClassification(correlated.track_id, d)}
                     >
-                      Aplicar
-                    </Button>
+                       {t("Aplicar")} </Button>
                   )}
-                </div>
-              </div>
+                 {t("")} </div>
+               {t("")} </div>
             );
           })}
-        </div>
+         {t("")} </div>
       )}
-    </Card>
+     {t("")} </Card>
   );
 }

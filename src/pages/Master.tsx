@@ -1,3 +1,5 @@
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { t, translateText, locale, useLanguage } from "@/lib/i18n";
 import logoAsset from "@/assets/poseidon.jpeg.asset.json";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -35,16 +37,18 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 export const unitScore = (u: Unit) => Math.round(u.kills * 10 - u.impacts * 15 + Number(u.hull_integrity) * 0.5 + (u.status === "sunk" ? -50 : 0));
 
 function Bar({ v, label }: { v: number; label: string }) {
+  useLanguage();
   const c = v > 70 ? "bg-threat-friend" : v > 40 ? "bg-primary" : "bg-destructive";
   return (
     <div>
-      <div className="flex justify-between text-[10px] font-mono text-muted-foreground"><span>{label}</span><span>{Math.round(v)}%</span></div>
-      <div className="h-1 bg-secondary"><div className={`h-full ${c}`} style={{ width: `${Math.max(0, v)}%` }} /></div>
-    </div>
+       {t("")} <div className="flex justify-between text-[10px] font-mono text-muted-foreground"><span>{label}</span><span>{Math.round(v)}%</span></div>
+       {t("")} <div className="h-1 bg-secondary"><div className={`h-full ${c}`} style={{ width: `${Math.max(0, v)}%` }} /></div>
+     {t("")} </div>
   );
 }
 
 export default function Master() {
+  useLanguage();
   const { user, displayName, signOut } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [exId, setExId] = useState<string | null>(null);
@@ -151,18 +155,18 @@ export default function Master() {
     setNewEx("");
     setExId(data.id);
     loadExercises();
-    toast.success("Ejercicio creado");
+    toast.success(t("Ejercicio creado"));
   };
 
   const addUnit = async () => {
-    if (!ex || !newUnit.name.trim()) return toast.warning("Escriba el nombre del buque");
+    if (!ex || !newUnit.name.trim()) return toast.warning(t("Escriba el nombre del buque"));
     const b = (newUnit.bearing * Math.PI) / 180;
     const pos = { pos_x_nm: newUnit.dist * Math.sin(b), pos_y_nm: newUnit.dist * Math.cos(b) };
     if (ex.mode === "integrated") {
       const { error } = await supabase.from("exercise_units").insert({ exercise_id: ex.id, name: newUnit.name.trim(), scenario_id: ex.scenario_id, ...pos });
       if (error) return toast.error(error.message);
       setNewUnit({ ...newUnit, name: "" });
-      return toast.success(`Buque ${newUnit.name} posicionado a ${newUnit.dist} NM / ${newUnit.bearing}°`);
+      return toast.success(t("Buque {0} posicionado a {1} NM / {2}°", newUnit.name, newUnit.dist, newUnit.bearing));
     }
     const tpl = templates.find((t) => t.id === newUnit.template);
     const { data: scn, error: e1 } = await supabase.from("scenarios").insert({
@@ -178,7 +182,7 @@ export default function Master() {
     const { error } = await supabase.from("exercise_units").insert({ exercise_id: ex.id, name: newUnit.name.trim(), scenario_id: scn.id, ...pos });
     if (error) return toast.error(error.message);
     setNewUnit({ ...newUnit, name: "" });
-    toast.success(`Buque ${newUnit.name} añadido`);
+    toast.success(t("Buque {0} añadido", newUnit.name));
   };
 
   const removeUnit = async (u: Unit) => {
@@ -187,7 +191,7 @@ export default function Master() {
     const { error } = await supabase.from("exercise_units").delete().eq("id", u.id);
     if (error) return toast.error(error.message);
     setUnits((prev: any[]) => prev.filter((x) => x.id !== u.id));
-    toast.success(`Buque ${u.name} eliminado`);
+    toast.success(t("Buque {0} eliminado", u.name));
   };
 
   const removeScenario = async (s: Scn) => {
@@ -195,14 +199,14 @@ export default function Master() {
     const { error } = await supabase.from("scenarios").delete().eq("id", s.id);
     if (error) return toast.error(error.message);
     setTemplates((prev) => prev.filter((x) => x.id !== s.id));
-    toast.success(`Escenario ${s.name} eliminado`);
+    toast.success(t("Escenario {0} eliminado", s.name));
   };
 
   const setStatus = async (status: "running" | "ended") => {
     if (!ex || !user) return;
     await supabase.from("exercises").update(status === "running" ? { status, started_at: new Date().toISOString(), ended_at: null } : { status, ended_at: new Date().toISOString() }).eq("id", ex.id);
     await supabase.from("exercise_commands").insert({ exercise_id: ex.id, unit_id: null, command_type: status === "running" ? "start" : "end", created_by: user.id });
-    toast.success(status === "running" ? "Ejercicio iniciado" : "Ejercicio finalizado");
+    toast.success(status === "running" ? t("Ejercicio iniciado") : t("Ejercicio finalizado"));
     if (status === "ended") setShowReport(true);
     loadExercises();
   };
@@ -210,7 +214,7 @@ export default function Master() {
   const launchRaid = async (targets: Unit[]) => {
     if (!ex || !user) return;
     const live = targets.filter((u) => u.status !== "sunk" && u.scenario_id);
-    if (!live.length) return toast.warning("No hay buques a flote para atacar");
+    if (!live.length) return toast.warning(t("No hay buques a flote para atacar"));
     const threats = [{ platform: raid.platform, count: raid.count }];
     if (ex.mode === "integrated" && ex.scenario_id) {
       for (const u of live) {
@@ -222,7 +226,7 @@ export default function Master() {
         });
         await supabase.from("exercise_commands").insert({ exercise_id: ex.id, unit_id: u.id, command_type: "raid", payload: { threats }, created_by: user.id });
       }
-      return toast.error(`Raid lanzado contra ${live.length} buque(s)`);
+      return toast.error(t("Raid lanzado contra {0} buque(s)", live.length));
     }
     for (const u of live) {
       // Insert threats directly so the raid arrives even if the ship console is momentarily disconnected
@@ -234,21 +238,21 @@ export default function Master() {
       });
       await supabase.from("exercise_commands").insert({ exercise_id: ex.id, unit_id: u.id, command_type: "raid", payload: { threats }, created_by: user.id });
     }
-    toast.error(`Raid lanzado contra ${live.length} buque(s)`);
+    toast.error(t("Raid lanzado contra {0} buque(s)", live.length));
   };
 
   const resetUnit = async (u: Unit) => {
     if (!ex || !user) return;
     await supabase.from("exercise_commands").insert({ exercise_id: ex.id, unit_id: u.id, command_type: "reset", created_by: user.id });
-    toast.success(`Orden de reparación enviada a ${u.name}`);
+    toast.success(t("Orden de reparación enviada a {0}", u.name));
   };
 
   const saveScenario = async () => {
-    if (!sb.name.trim()) return toast.warning("Nombre del escenario");
-    if (!sbThreats.length) return toast.warning("Agregue al menos un contacto");
+    if (!sb.name.trim()) return toast.warning(t("Nombre del escenario"));
+    if (!sbThreats.length) return toast.warning(t("Agregue al menos un contacto"));
     const { error } = await supabase.from("scenarios").insert({ ...sb, name: sb.name.trim(), threats: sbThreats, is_template: true, created_by: user?.id, description: `Escenario personalizado · ${sbThreats.reduce((a, t) => a + t.count, 0)} contactos` });
     if (error) return toast.error(error.message);
-    toast.success("Escenario guardado");
+    toast.success(t("Escenario guardado"));
     setSb({ name: "", domain: "mixed", threat_level: "high" });
     setSbThreats([]);
     loadTemplates();
@@ -258,7 +262,7 @@ export default function Master() {
 
   const [formation, setFormation] = useState({ type: "circle", spacing: 3, axis: 0 });
   const applyFormation = async () => {
-    if (!units.length) return toast.warning("Añada buques primero");
+    if (!units.length) return toast.warning(t("Añada buques primero"));
     const { type, spacing: d, axis } = formation;
     const n = units.length;
     // offsets in formation frame: f = forward along axis, r = to starboard
@@ -281,7 +285,7 @@ export default function Master() {
       const y = f * Math.cos(ax) - r * Math.sin(ax);
       return supabase.from("exercise_units").update({ pos_x_nm: x, pos_y_nm: y }).eq("id", u.id);
     }));
-    toast.success(`Formación aplicada · ${units[0].name} como guía`);
+    toast.success(t("Formación aplicada · {0} como guía", units[0].name));
   };
 
   const seedTheatre = async () => {
@@ -304,7 +308,7 @@ export default function Master() {
     await supabase.from("contacts").delete().eq("scenario_id", sid);
     await supabase.from("contacts").insert(seeds);
     await supabase.from("tactical_events").insert({ scenario_id: sid, event_type: "scenario", domain: "mixed", severity: "info", message: `Teatro común sembrado: ${tpl?.name ?? "aleatorio"} · ${seeds.length} contactos` });
-    toast.success(`Teatro común con ${seeds.length} contactos`);
+    toast.success(t("Teatro común con {0} contactos", seeds.length));
   };
 
   const moveUnit = async (u: Unit, bearing: number, dist: number) => {
@@ -353,7 +357,7 @@ export default function Master() {
         supabase.from("exercise_commands").insert({ exercise_id: ex.id, unit_id: u.id, command_type: "impact", created_by: user!.id,
           payload: { track_id: c.track_id, platform_type: c.platform_type, domain: c.domain, scenario_id: sid } }).then();
         supabase.from("tactical_events").insert({ scenario_id: sid, event_type: "impact", domain: c.domain, severity: "critical",
-          message: `💥 IMPACTO en ${u.name} · ${c.track_id} (${c.platform_type}) · daño ${dmg}%` }).then();
+          message: `💥 IMPACTO en ${u.name} · ${c.track_id} (${translateText(c.platform_type)}) · daño ${dmg}%` }).then();
       }
       if (++n % 2 === 0) next.forEach((c) => supabase.from("contacts").update({ range_nm: c.range_nm, bearing: c.bearing, heading: c.heading }).eq("id", c.id).then());
     }, 1500);
@@ -368,7 +372,7 @@ export default function Master() {
   const copyLink = (u: Unit, station: string) => {
     const url = `${window.location.origin}/?unit=${u.id}&station=${station}`;
     navigator.clipboard.writeText(url).then(
-      () => toast.success(`Enlace ${STATION_LABEL[station]} de ${u.name} copiado`),
+      () => toast.success(t("Enlace {0} de {1} copiado", STATION_LABEL[station], u.name)),
       () => window.prompt("Copie el enlace:", url)
     );
   };
@@ -377,365 +381,364 @@ export default function Master() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-hud-bg/80 backdrop-blur sticky top-0 z-20 print:hidden">
-        <div className="container py-2 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <img src={logoAsset.url} alt="Logo Poseidón" className="w-16 h-16 rounded-full border border-primary/60 object-cover" />
-            <div>
-            <h1 className="font-display text-base text-primary glow-amber">PUESTO MAESTRO · INSTRUCTOR</h1>
-            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-accent/80">Control de ejercicio multi-buque · {displayName}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline" className="font-mono text-xs"><Link to="/"><Monitor className="w-3.5 h-3.5 mr-1" />Consola</Link></Button>
-            <Button size="sm" variant="ghost" className="font-mono text-xs" onClick={signOut}><LogOut className="w-3.5 h-3.5 mr-1" />Salir</Button>
-          </div>
-        </div>
-      </header>
+       {t("")} <header className="border-b border-border bg-hud-bg/80 backdrop-blur sticky top-0 z-20 print:hidden">
+         {t("")} <div className="container py-2 flex flex-wrap items-center justify-between gap-4">
+           {t("")} <div className="flex items-center gap-3">
+             {t("")} <img src={logoAsset.url} alt={t("Logo Poseidón")} className="w-16 h-16 rounded-full border border-primary/60 object-cover" />
+             {t("")} <div>
+             {t("")} <h1 className="font-display text-base text-primary glow-amber">{t("PUESTO MAESTRO · INSTRUCTOR")}</h1>
+             {t("")} <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-accent/80">{t("Control de ejercicio multi-buque ·")} {displayName}</p>
+             {t("")} </div>
+           {t("")} </div>
+           {t("")} <div className="flex gap-2">
+             {t("")} <Button asChild size="sm" variant="outline" className="font-mono text-xs"><Link to="/"><Monitor className="w-3.5 h-3.5 mr-1" />{t("Consola")}</Link></Button>
+             {t("")} <Button size="sm" variant="ghost" className="font-mono text-xs" onClick={signOut}><LogOut className="w-3.5 h-3.5 mr-1" />{t("Salir")}</Button>
+           {t("")} </div>
+         {t("")} </div>
+       {t("")} </header>
 
-      <main className="container py-4 space-y-3">
-        {/* Exercise selector */}
-        <div className="hud-panel p-3 flex flex-wrap items-center gap-2 print:hidden">
-          <span className="hud-label mr-2">Ejercicios</span>
-          {exercises.map((e) => (
+       {t("")} <main className="container py-4 space-y-3">
+         {t("")} {/* Exercise selector */}
+         {t("")} <div className="hud-panel p-3 flex flex-wrap items-center gap-2 print:hidden">
+           {t("")} <span className="hud-label mr-2">{t("Ejercicios")}</span>
+           {t("")} {exercises.map((e) => (
             <button key={e.id} onClick={() => { setExId(e.id); setShowReport(false); }} className={`px-3 py-1.5 text-xs font-mono uppercase border ${e.id === exId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-accent"}`}>
-              {e.name} · {e.status === "running" ? "EN CURSO" : e.status === "ended" ? "FINALIZADO" : "PLANEACIÓN"}
-            </button>
+               {t("")} {e.name} · {e.status === "running" ? t("EN CURSO") : e.status === "ended" ? t("FINALIZADO") : t("PLANEACIÓN")}
+             {t("")} </button>
           ))}
-          <div className="ml-auto flex gap-2">
-            <Input value={newEx} onChange={(e) => setNewEx(e.target.value)} placeholder="Nuevo ejercicio (ej. UNITAS 2026)" className="h-8 w-56 text-xs" />
-            <select className="bg-input border border-border rounded px-2 text-xs font-mono" value={newMode} onChange={(e) => setNewMode(e.target.value as any)}>
-              <option value="integrated">Flota integrada (mismo mar)</option>
-              <option value="independent">Buques independientes</option>
-            </select>
-            <Button size="sm" onClick={createExercise} className="font-mono text-xs"><Plus className="w-3.5 h-3.5 mr-1" />Crear</Button>
-          </div>
-        </div>
+           {t("")} <div className="ml-auto flex gap-2">
+             {t("")} <Input value={newEx} onChange={(e) => setNewEx(e.target.value)} placeholder={t("Nuevo ejercicio (ej. UNITAS 2026)")} className="h-8 w-56 text-xs" />
+             {t("")} <select className="bg-input border border-border rounded px-2 text-xs font-mono" value={newMode} onChange={(e) => setNewMode(e.target.value as any)}>
+               {t("")} <option value="integrated">{t("Flota integrada (mismo mar)")}</option>
+               {t("")} <option value="independent">{t("Buques independientes")}</option>
+             {t("")} </select>
+             {t("")} <Button size="sm" onClick={createExercise} className="font-mono text-xs"><Plus className="w-3.5 h-3.5 mr-1" />{t("Crear")}</Button>
+           {t("")} </div>
+         {t("")} </div>
 
-        {ex && (
+         {t("")} {ex && (
           <div className="hud-panel p-3 flex flex-wrap items-center gap-2 print:hidden">
-            <span className="font-display text-sm text-accent">{ex.name}</span>
-            {ex.status !== "running" && <Button size="sm" onClick={() => setStatus("running")} className="font-mono text-xs"><Play className="w-3.5 h-3.5 mr-1" />Iniciar ejercicio</Button>}
-            {ex.status === "running" && <Button size="sm" variant="destructive" onClick={() => setStatus("ended")} className="font-mono text-xs"><Square className="w-3.5 h-3.5 mr-1" />Finalizar ejercicio</Button>}
-            <Button size="sm" variant="outline" onClick={() => setShowReport((v) => !v)} className="font-mono text-xs"><FileText className="w-3.5 h-3.5 mr-1" />{showReport ? "Ver tablero" : "Informe"}</Button>
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <span className="hud-label">Raid</span>
-              <select className={sel} value={raid.platform} onChange={(e) => setRaid({ ...raid, platform: e.target.value })}>
-                {THREATS.map((t) => <option key={t.platform} value={t.platform}>{PLATFORM_LABEL[t.platform]}</option>)}
-              </select>
-              <Input type="number" min={1} max={20} value={raid.count} onChange={(e) => setRaid({ ...raid, count: Number(e.target.value) })} className="h-8 w-16 text-xs" />
-              <Button size="sm" variant="destructive" disabled={ex.status !== "running"} onClick={() => launchRaid(units)} className="font-mono text-xs"><Rocket className="w-3.5 h-3.5 mr-1" />A toda la flota</Button>
-            </div>
-          </div>
+             {t("")} <span className="font-display text-sm text-accent">{ex.name}</span>
+             {t("")} {ex.status !== "running" && <Button size="sm" onClick={() => setStatus("running")} className="font-mono text-xs"><Play className="w-3.5 h-3.5 mr-1" />{t("Iniciar ejercicio")}</Button>}
+             {t("")} {ex.status === "running" && <Button size="sm" variant="destructive" onClick={() => setStatus("ended")} className="font-mono text-xs"><Square className="w-3.5 h-3.5 mr-1" />{t("Finalizar ejercicio")}</Button>}
+             {t("")} <Button size="sm" variant="outline" onClick={() => setShowReport((v) => !v)} className="font-mono text-xs"><FileText className="w-3.5 h-3.5 mr-1" />{showReport ? t("Ver tablero") : t("Informe")}</Button>
+             {t("")} <div className="ml-auto flex flex-wrap items-center gap-2">
+               {t("")} <span className="hud-label">{t("Raid")}</span>
+               {t("")} <select className={sel} value={raid.platform} onChange={(e) => setRaid({ ...raid, platform: e.target.value })}>
+                 {t("")} {THREATS.map((t) => <option key={t.platform} value={t.platform}>{translateText(PLATFORM_LABEL[t.platform])}</option>)}
+               {t("")} </select>
+               {t("")} <Input type="number" min={1} max={20} value={raid.count} onChange={(e) => setRaid({ ...raid, count: Number(e.target.value) })} className="h-8 w-16 text-xs" />
+               {t("")} <Button size="sm" variant="destructive" disabled={ex.status !== "running"} onClick={() => launchRaid(units)} className="font-mono text-xs"><Rocket className="w-3.5 h-3.5 mr-1" />{t("A toda la flota")}</Button>
+             {t("")} </div>
+           {t("")} </div>
         )}
 
-        {ex && showReport && (
+         {t("")} {ex && showReport && (
           <div className="hud-panel p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-primary">INFORME FINAL · {ex.name}</h2>
-              <Button size="sm" variant="outline" onClick={() => window.print()} className="font-mono text-xs print:hidden"><Printer className="w-3.5 h-3.5 mr-1" />Imprimir</Button>
-            </div>
-            <p className="text-xs font-mono text-muted-foreground">
-              Inicio: {ex.started_at ? new Date(ex.started_at).toLocaleString("es-CO") : "—"} · Fin: {ex.ended_at ? new Date(ex.ended_at).toLocaleString("es-CO") : "en curso"}
-            </p>
-            <table className="w-full text-xs font-mono">
-              <thead className="text-muted-foreground text-left border-b border-border">
-                <tr><th className="py-1">#</th><th>Buque</th><th>Estado</th><th>Casco</th><th>Derribos</th><th>Impactos</th><th>Disparos</th><th>Efectividad</th><th>Munición</th><th>Puntaje</th></tr>
-              </thead>
-              <tbody>
-                {ranking.map((u, i) => (
+             {t("")} <div className="flex items-center justify-between">
+               {t("")} <h2 className="font-display text-primary">{t("INFORME FINAL ·")} {ex.name}</h2>
+               {t("")} <Button size="sm" variant="outline" onClick={() => window.print()} className="font-mono text-xs print:hidden"><Printer className="w-3.5 h-3.5 mr-1" />{t("Imprimir")}</Button>
+             {t("")} </div>
+             {t("")} <p className="text-xs font-mono text-muted-foreground">
+               {t("Inicio:")} {ex.started_at ? new Date(ex.started_at).toLocaleString(locale()) : "—"}  {t("· Fin:")} {ex.ended_at ? new Date(ex.ended_at).toLocaleString(locale()) : t("en curso")}
+             {t("")} </p>
+             {t("")} <table className="w-full text-xs font-mono">
+               {t("")} <thead className="text-muted-foreground text-left border-b border-border">
+                 {t("")} <tr><th className="py-1">#</th><th>{t("Buque")}</th><th>{t("Estado")}</th><th>{t("Casco")}</th><th>{t("Derribos")}</th><th>{t("Impactos")}</th><th>{t("Disparos")}</th><th>{t("Efectividad")}</th><th>{t("Munición")}</th><th>{t("Puntaje")}</th></tr>
+               {t("")} </thead>
+               {t("")} <tbody>
+                 {t("")} {ranking.map((u, i) => (
                   <tr key={u.id} className="border-b border-border/40">
-                    <td className="py-1">{i + 1}</td>
-                    <td className="text-accent">{u.name}</td>
-                    <td>{STATUS_META[u.status]?.label ?? u.status}</td>
-                    <td>{Math.round(u.hull_integrity)}%</td>
-                    <td>{u.kills}</td>
-                    <td>{u.impacts}</td>
-                    <td>{u.shots}</td>
-                    <td>{u.shots ? Math.round((u.kills / u.shots) * 100) : 0}%</td>
-                    <td>{Math.round(u.ammo_pct)}%</td>
-                    <td className="text-primary">{unitScore(u)}</td>
-                  </tr>
+                     {t("")} <td className="py-1">{i + 1}</td>
+                     {t("")} <td className="text-accent">{u.name}</td>
+                     {t("")} <td>{STATUS_META[u.status]?.label ?? u.status}</td>
+                     {t("")} <td>{Math.round(u.hull_integrity)}%</td>
+                     {t("")} <td>{u.kills}</td>
+                     {t("")} <td>{u.impacts}</td>
+                     {t("")} <td>{u.shots}</td>
+                     {t("")} <td>{u.shots ? Math.round((u.kills / u.shots) * 100) : 0}%</td>
+                     {t("")} <td>{Math.round(u.ammo_pct)}%</td>
+                     {t("")} <td className="text-primary">{unitScore(u)}</td>
+                   {t("")} </tr>
                 ))}
-              </tbody>
-            </table>
-            <p className="text-[10px] font-mono text-muted-foreground">Puntaje = derribos×10 − impactos×15 + casco×0.5 − 50 si hundido.</p>
-          </div>
+               {t("")} </tbody>
+             {t("")} </table>
+             {t("")} <p className="text-[10px] font-mono text-muted-foreground">{t("Puntaje = derribos×10 − impactos×15 + casco×0.5 − 50 si hundido.")}</p>
+           {t("")} </div>
         )}
 
-        {ex && !showReport && (
+         {t("")} {ex && !showReport && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-            <section className="xl:col-span-8 space-y-3">
-              <div className="hud-panel p-3 flex flex-wrap gap-2 items-center">
-                <span className="hud-label mr-1">Añadir buque</span>
-                <Input value={newUnit.name} onChange={(e) => setNewUnit({ ...newUnit, name: e.target.value })} placeholder="ARC Almirante Padilla" className="h-8 w-52 text-xs" />
-                {ex.mode !== "integrated" && (
+             {t("")} <section className="xl:col-span-8 space-y-3">
+               {t("")} <div className="hud-panel p-3 flex flex-wrap gap-2 items-center">
+                 {t("")} <span className="hud-label mr-1">{t("Añadir buque")}</span>
+                 {t("")} <Input value={newUnit.name} onChange={(e) => setNewUnit({ ...newUnit, name: e.target.value })} placeholder="ARC Almirante Padilla" className="h-8 w-52 text-xs" />
+                 {t("")} {ex.mode !== "integrated" && (
                   <select className={sel} value={newUnit.template} onChange={(e) => setNewUnit({ ...newUnit, template: e.target.value })}>
-                    <option value="">Escenario: vacío</option>
-                    {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
+                     {t("")} <option value="">{t("Escenario: vacío")}</option>
+                     {t("")} {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                   {t("")} </select>
                 )}
-                <span className="text-[10px] font-mono text-muted-foreground">Posición</span>
-                <Input type="number" value={newUnit.bearing} onChange={(e) => setNewUnit({ ...newUnit, bearing: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Demora desde el centro (°)" />
-                <span className="text-[10px] font-mono">°</span>
-                <Input type="number" value={newUnit.dist} onChange={(e) => setNewUnit({ ...newUnit, dist: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Distancia desde el centro (NM)" />
-                <span className="text-[10px] font-mono">NM</span>
-                <Button size="sm" onClick={addUnit} className="font-mono text-xs"><Plus className="w-3.5 h-3.5 mr-1" />Añadir</Button>
-              </div>
+                 {t("")} <span className="text-[10px] font-mono text-muted-foreground">{t("Posición")}</span>
+                 {t("")} <Input type="number" value={newUnit.bearing} onChange={(e) => setNewUnit({ ...newUnit, bearing: Number(e.target.value) })} className="h-8 w-16 text-xs" title={t("Demora desde el centro (°)")} />
+                 {t("")} <span className="text-[10px] font-mono">°</span>
+                 {t("")} <Input type="number" value={newUnit.dist} onChange={(e) => setNewUnit({ ...newUnit, dist: Number(e.target.value) })} className="h-8 w-16 text-xs" title={t("Distancia desde el centro (NM)")} />
+                 {t("")} <span className="text-[10px] font-mono">NM</span>
+                 {t("")} <Button size="sm" onClick={addUnit} className="font-mono text-xs"><Plus className="w-3.5 h-3.5 mr-1" />{t("Añadir")}</Button>
+               {t("")} </div>
 
-              {ex.mode === "integrated" && (
+               {t("")} {ex.mode === "integrated" && (
                 <div className="hud-panel p-3 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="hud-label">Teatro común · flota integrada</span>
-                    <select className={sel} value={seedTpl} onChange={(e) => setSeedTpl(e.target.value)}>
-                      <option value="">Contactos aleatorios</option>
-                      {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                    <Button size="sm" variant="outline" onClick={seedTheatre} className="font-mono text-xs h-8">Sembrar escenario</Button>
-                    <span className="hud-label ml-2">Formación</span>
-                    <select className={sel} value={formation.type} onChange={(e) => setFormation({ ...formation, type: e.target.value })}>
-                      <option value="circle">Circular (pantalla AAW)</option>
-                      <option value="column">Columna / línea de fila</option>
-                      <option value="line">Línea de frente</option>
-                      <option value="wedge">Cuña (V)</option>
-                      <option value="echelon">Escalón</option>
-                      <option value="diamond">Diamante</option>
-                    </select>
-                    <Input type="number" min={0.5} step={0.5} value={formation.spacing} onChange={(e) => setFormation({ ...formation, spacing: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Distancia entre buques (NM)" />
-                    <span className="text-[10px] font-mono">NM</span>
-                    <Input type="number" value={formation.axis} onChange={(e) => setFormation({ ...formation, axis: Number(e.target.value) })} className="h-8 w-16 text-xs" title="Eje / rumbo de la formación (°)" />
-                    <span className="text-[10px] font-mono">° eje</span>
-                    <Button size="sm" onClick={applyFormation} className="font-mono text-xs h-8">Aplicar</Button>
-                    {ex.status !== "running" && <span className="text-[10px] font-mono text-primary">Inicie el ejercicio para que las amenazas se muevan. Mantenga esta pantalla abierta: es el simulador central.</span>}
-                  </div>
-                  <FleetPlot units={units} contacts={fleetContacts} />
-                </div>
+                   {t("")} <div className="flex flex-wrap items-center gap-2">
+                     {t("")} <span className="hud-label">{t("Teatro común · flota integrada")}</span>
+                     {t("")} <select className={sel} value={seedTpl} onChange={(e) => setSeedTpl(e.target.value)}>
+                       {t("")} <option value="">{t("Contactos aleatorios")}</option>
+                       {t("")} {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                     {t("")} </select>
+                     {t("")} <Button size="sm" variant="outline" onClick={seedTheatre} className="font-mono text-xs h-8">{t("Sembrar escenario")}</Button>
+                     {t("")} <span className="hud-label ml-2">{t("Formación")}</span>
+                     {t("")} <select className={sel} value={formation.type} onChange={(e) => setFormation({ ...formation, type: e.target.value })}>
+                       {t("")} <option value="circle">{t("Circular (pantalla AAW)")}</option>
+                       {t("")} <option value="column">{t("Columna / línea de fila")}</option>
+                       {t("")} <option value="line">{t("Línea de frente")}</option>
+                       {t("")} <option value="wedge">{t("Cuña (V)")}</option>
+                       {t("")} <option value="echelon">{t("Escalón")}</option>
+                       {t("")} <option value="diamond">{t("Diamante")}</option>
+                     {t("")} </select>
+                     {t("")} <Input type="number" min={0.5} step={0.5} value={formation.spacing} onChange={(e) => setFormation({ ...formation, spacing: Number(e.target.value) })} className="h-8 w-16 text-xs" title={t("Distancia entre buques (NM)")} />
+                     {t("")} <span className="text-[10px] font-mono">NM</span>
+                     {t("")} <Input type="number" value={formation.axis} onChange={(e) => setFormation({ ...formation, axis: Number(e.target.value) })} className="h-8 w-16 text-xs" title={t("Eje / rumbo de la formación (°)")} />
+                     {t("")} <span className="text-[10px] font-mono">{t("° eje")}</span>
+                     {t("")} <Button size="sm" onClick={applyFormation} className="font-mono text-xs h-8">{t("Aplicar")}</Button>
+                     {t("")} {ex.status !== "running" && <span className="text-[10px] font-mono text-primary">{t("Inicie el ejercicio para que las amenazas se muevan. Mantenga esta pantalla abierta: es el simulador central.")}</span>}
+                   {t("")} </div>
+                   {t("")} <FleetPlot units={units} contacts={fleetContacts} />
+                 {t("")} </div>
               )}
 
-              {units.length === 0 && <div className="hud-panel p-6 text-center text-xs font-mono text-muted-foreground">Añada buques al ejercicio. Cada operador se une desde su consola con su usuario.</div>}
+               {t("")} {units.length === 0 && <div className="hud-panel p-6 text-center text-xs font-mono text-muted-foreground">{t("Añada buques al ejercicio. Cada operador se une desde su consola con su usuario.")}</div>}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {units.map((u) => {
+               {t("")} <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                 {t("")} {units.map((u) => {
                   const st = STATUS_META[u.status] ?? STATUS_META.active;
                   const cc = (u.scenario_id && contactCounts[u.scenario_id]) || {};
                   return (
-                    <div key={u.id} className={`hud-panel p-3 space-y-2 ${u.status === "sunk" ? "opacity-70" : ""}`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-display text-sm text-accent">{u.name}</div>
-                          <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-                            <span className={`w-1.5 h-1.5 rounded-full ${fresh(u) ? "bg-threat-friend animate-pulse" : "bg-muted-foreground"}`} />
-                            {fresh(u) ? "En línea" : "Sin enlace"} · COND {u.alert_level === "red" ? "I" : u.alert_level === "yellow" ? "II" : "III"}
-                          </div>
-                        </div>
-                        <span className={`text-[10px] font-mono border px-1.5 py-0.5 ${st.cls}`}>{st.label}</span>
-                      </div>
-                      <Bar v={Number(u.hull_integrity)} label="Casco" />
-                      <Bar v={Number(u.propulsion)} label="Propulsión" />
-                      <Bar v={Number(u.ammo_pct)} label="Munición" />
-                      <div className="grid grid-cols-4 gap-1 text-center font-mono">
-                        <div><div className="text-threat-friend">{u.kills}</div><div className="text-[9px] text-muted-foreground">Derribos</div></div>
-                        <div><div className="text-threat-hostile">{u.impacts}</div><div className="text-[9px] text-muted-foreground">Impactos</div></div>
-                        <div><div>{u.shots}</div><div className="text-[9px] text-muted-foreground">Disparos</div></div>
-                        <div><div className="text-primary">{unitScore(u)}</div><div className="text-[9px] text-muted-foreground">Puntaje</div></div>
-                      </div>
-                      <div className="flex flex-wrap gap-1 text-[10px] font-mono">
-                        {(["air", "surface", "subsurface", "electronic"] as Domain[]).map((d) => (
-                          <span key={d} className="border border-border px-1">{DOMAIN_META[d].abbr} {cc[d] ?? 0}</span>
+                    <div key={u.id} className={`hud-panel p-3 space-y-2 ${u.status === "sunk" ? "opacity-70" : t("")}`}>
+                       {t("")} <div className="flex items-center justify-between">
+                         {t("")} <div>
+                           {t("")} <div className="font-display text-sm text-accent">{u.name}</div>
+                           {t("")} <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                             {t("")} <span className={`w-1.5 h-1.5 rounded-full ${fresh(u) ? "bg-threat-friend animate-pulse" : "bg-muted-foreground"}`} />
+                             {t("")} {fresh(u) ? t("En línea") : t("Sin enlace")} · COND {u.alert_level === "red" ? "I" : u.alert_level === "yellow" ? "II" : "III"}
+                           {t("")} </div>
+                         {t("")} </div>
+                         {t("")} <span className={`text-[10px] font-mono border px-1.5 py-0.5 ${st.cls}`}>{translateText(st.label)}</span>
+                       {t("")} </div>
+                       {t("")} <Bar v={Number(u.hull_integrity)} label={t("Casco")} />
+                       {t("")} <Bar v={Number(u.propulsion)} label={t("Propulsión")} />
+                       {t("")} <Bar v={Number(u.ammo_pct)} label={t("Munición")} />
+                       {t("")} <div className="grid grid-cols-4 gap-1 text-center font-mono">
+                         {t("")} <div><div className="text-threat-friend">{u.kills}</div><div className="text-[9px] text-muted-foreground">{t("Derribos")}</div></div>
+                         {t("")} <div><div className="text-threat-hostile">{u.impacts}</div><div className="text-[9px] text-muted-foreground">{t("Impactos")}</div></div>
+                         {t("")} <div><div>{u.shots}</div><div className="text-[9px] text-muted-foreground">{t("Disparos")}</div></div>
+                         {t("")} <div><div className="text-primary">{unitScore(u)}</div><div className="text-[9px] text-muted-foreground">{t("Puntaje")}</div></div>
+                       {t("")} </div>
+                       {t("")} <div className="flex flex-wrap gap-1 text-[10px] font-mono">
+                         {t("")} {([t("air"), t("surface"), t("subsurface"), t("electronic")] as Domain[]).map((d) => (
+                          <span key={d} className="border border-border px-1">{DOMAIN_META[d].abbr}  {t("")} {cc[d] ?? 0}</span>
                         ))}
-                        <span className="border border-destructive text-destructive px-1">Hostiles {cc.hostile ?? 0}</span>
-                      </div>
-                      <div className="text-[10px] font-mono text-muted-foreground">
-                        Puestos: {unitMembers(u.id).length === 0 ? "ninguno conectado" : unitMembers(u.id).map((m) => `${STATION_LABEL[m.station] ?? m.station}: ${names[m.user_id] ?? "?"}`).join(" · ")}
-                      </div>
-                      {ex.mode === "integrated" && (
+                         {t("")} <span className="border border-destructive text-destructive px-1">{t("Hostiles")} {cc.hostile ?? 0}</span>
+                       {t("")} </div>
+                       {t("")} <div className="text-[10px] font-mono text-muted-foreground">
+                         {t("Puestos:")} {unitMembers(u.id).length === 0 ? t("ninguno conectado") : unitMembers(u.id).map((m) => `${STATION_LABEL[m.station] ?? m.station}: ${names[m.user_id] ?? "?"}`).join(" · ")}
+                       {t("")} </div>
+                       {t("")} {ex.mode === "integrated" && (
                         <PosEditor u={u} onSave={(b, d) => moveUnit(u, b, d)} />
                       )}
-                      <div className="space-y-1">
-                        <div className="text-[10px] font-mono text-muted-foreground">Copiar enlace de invitación por puesto:</div>
-                        <div className="grid grid-cols-5 gap-1">
-                          {Object.keys(STATION_LABEL).map((st) => {
+                       {t("")} <div className="space-y-1">
+                         {t("")} <div className="text-[10px] font-mono text-muted-foreground">{t("Copiar enlace de invitación por puesto:")}</div>
+                         {t("")} <div className="grid grid-cols-5 gap-1">
+                           {t("")} {Object.keys(STATION_LABEL).map((st) => {
                             const taken = unitMembers(u.id).find((m) => m.station === st);
                             return (
-                              <button key={st} onClick={() => copyLink(u, st)} title={taken ? `Ocupado por ${names[taken.user_id] ?? "?"}` : "Libre"}
+                              <button key={st} onClick={() => copyLink(u, st)} title={taken ? t("Ocupado por {0}", names[taken.user_id] ?? "?") : t("Libre")}
                                 className={`text-[10px] font-mono border py-1 ${taken ? "border-threat-friend text-threat-friend" : "border-border hover:border-accent"}`}>
-                                {STATION_LABEL[st]}
-                              </button>
+                                 {t("")} {translateText(STATION_LABEL[st])}
+                               {t("")} </button>
                             );
                           })}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="destructive" disabled={ex.status !== "running" || u.status === "sunk"} onClick={() => launchRaid([u])} className="flex-1 font-mono text-[10px] h-7"><Rocket className="w-3 h-3 mr-1" />Raid</Button>
-                        <Button size="sm" variant="outline" onClick={() => resetUnit(u)} className="flex-1 font-mono text-[10px] h-7">Reparar</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setToDelete(u)} className="h-7 px-2"><Trash2 className="w-3 h-3" /></Button>
-                      </div>
-                    </div>
+                         {t("")} </div>
+                       {t("")} </div>
+                       {t("")} <div className="flex gap-1">
+                         {t("")} <Button size="sm" variant="destructive" disabled={ex.status !== "running" || u.status === "sunk"} onClick={() => launchRaid([u])} className="flex-1 font-mono text-[10px] h-7"><Rocket className="w-3 h-3 mr-1" />{t("Raid")}</Button>
+                         {t("")} <Button size="sm" variant="outline" onClick={() => resetUnit(u)} className="flex-1 font-mono text-[10px] h-7">{t("Reparar")}</Button>
+                         {t("")} <Button size="sm" variant="ghost" onClick={() => setToDelete(u)} className="h-7 px-2"><Trash2 className="w-3 h-3" /></Button>
+                       {t("")} </div>
+                     {t("")} </div>
                   );
                 })}
-              </div>
-            </section>
+               {t("")} </div>
+             {t("")} </section>
 
-            <aside className="xl:col-span-4 space-y-3">
-              <div className="hud-panel p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="hud-label">Bitácora de toda la flota</div>
-                  <button
-                    title="Imprimir bitácora del ejercicio"
+             {t("")} <aside className="xl:col-span-4 space-y-3">
+               {t("")} <div className="hud-panel p-3">
+                 {t("")} <div className="flex items-center justify-between mb-2">
+                   {t("")} <div className="hud-label">{t("Bitácora de toda la flota")}</div>
+                   {t("")} <button
+                    title={t("Imprimir bitácora del ejercicio")}
                     className="flex items-center gap-1 text-[10px] font-mono uppercase text-accent hover:text-primary border border-border rounded px-2 py-0.5"
                     onClick={() => {
                       const w = window.open("", "_blank");
-                      if (!w) return toast.warning("Permita ventanas emergentes para imprimir");
+                      if (!w) return toast.warning(t("Permita ventanas emergentes para imprimir"));
                       const esc = (s: string) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" } as any)[c]);
-                      const rows = [...events].reverse().map((e: any) => `<tr class="${e.severity}"><td>${new Date(e.created_at).toLocaleString("es-CO", { hour12: false })}</td><td>${esc(unitByScenario[e.scenario_id] ?? "?")}</td><td>${esc(e.domain)}</td><td>${esc(e.event_type)}</td><td>${esc(e.severity)}</td><td>${esc(e.message)}</td></tr>`).join("");
-                      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bitácora del ejercicio</title><style>body{font-family:monospace;font-size:11px;margin:16px;color:#111}h1{font-size:16px;margin:0}p{margin:2px 0 12px;color:#555}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px;text-align:left;vertical-align:top}th{background:#eee}tr{break-inside:avoid}.critical td{color:#b00}.warning td{color:#a60}@page{size:A4;margin:12mm}</style></head><body><h1>SISTEMA TCM POSEIDÓN · BITÁCORA DEL EJERCICIO</h1><p>Ejercicio: ${esc(ex?.name ?? "")} · Buques: ${esc(units.map((u) => u.name).join(", "))} · Impreso: ${new Date().toLocaleString("es-CO", { hour12: false })} · ${events.length} eventos</p><table><thead><tr><th>Hora</th><th>Buque</th><th>Dominio</th><th>Tipo</th><th>Severidad</th><th>Mensaje</th></tr></thead><tbody>${rows || '<tr><td colspan="6">Sin eventos</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
+                      const rows = [...events].reverse().map((e: any) => `<tr class="${e.severity}"><td>${new Date(e.created_at).toLocaleString(locale(), { hour12: false })}</td><td>${esc(unitByScenario[e.scenario_id] ?? "?")}</td><td>${esc(e.domain)}</td><td>${esc(e.event_type)}</td><td>${esc(e.severity)}</td><td>${esc(e.message)}</td></tr>`).join("");
+                      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bitácora del ejercicio</title><style>body{font-family:monospace;font-size:11px;margin:16px;color:#111}h1{font-size:16px;margin:0}p{margin:2px 0 12px;color:#555}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px;text-align:left;vertical-align:top}th{background:#eee}tr{break-inside:avoid}.critical td{color:#b00}.warning td{color:#a60}@page{size:A4;margin:12mm}</style></head><body><h1>SISTEMA TCM POSEIDÓN · BITÁCORA DEL EJERCICIO</h1><p>Ejercicio: ${esc(ex?.name ?? "")} · Buques: ${esc(units.map((u) => u.name).join(", "))} · Impreso: ${new Date().toLocaleString(locale(), { hour12: false })} · ${events.length} eventos</p><table><thead><tr><th>Hora</th><th>Buque</th><th>Dominio</th><th>Tipo</th><th>Severidad</th><th>Mensaje</th></tr></thead><tbody>${rows || '<tr><td colspan="6">Sin eventos</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
                       w.document.close();
                     }}
                   >
-                    <Printer className="w-3 h-3" /> Imprimir
-                  </button>
-                </div>
-                <div className="space-y-1 max-h-[420px] overflow-y-auto">
-                  {events.length === 0 && <div className="text-xs font-mono text-muted-foreground">Sin eventos.</div>}
-                  {events.map((e) => (
+                     {t("")} <Printer className="w-3 h-3" />  {t("Imprimir")} </button>
+                 {t("")} </div>
+                 {t("")} <div className="space-y-1 max-h-[420px] overflow-y-auto">
+                   {t("")} {events.length === 0 && <div className="text-xs font-mono text-muted-foreground">{t("Sin eventos.")}</div>}
+                   {t("")} {events.map((e) => (
                     <div key={e.id} className={`text-[10px] font-mono border-l-2 pl-2 ${e.severity === "critical" ? "border-destructive" : e.severity === "warning" ? "border-primary" : "border-accent"}`}>
-                      <span className="text-muted-foreground">{new Date(e.created_at).toLocaleTimeString("es-CO", { hour12: false })} </span>
-                      <span className="text-accent">[{unitByScenario[e.scenario_id] ?? "?"}]</span> {e.message}
-                    </div>
+                       {t("")} <span className="text-muted-foreground">{new Date(e.created_at).toLocaleTimeString(locale(), { hour12: false })}  {t("")} </span>
+                       {t("")} <span className="text-accent">[{unitByScenario[e.scenario_id] ?? "?"}]</span>  {t("")} {translateText(e.message)}
+                     {t("")} </div>
                   ))}
-                </div>
-              </div>
+                 {t("")} </div>
+               {t("")} </div>
 
-              <div className="hud-panel p-3 space-y-2">
-                <div className="hud-label">Crear escenario</div>
-                <Input value={sb.name} onChange={(e) => setSb({ ...sb, name: e.target.value })} placeholder="Nombre del escenario" className="h-8 text-xs" />
-                <div className="flex gap-1">
-                  <select className={sel + " flex-1"} value={sb.domain} onChange={(e) => setSb({ ...sb, domain: e.target.value })}>
-                    <option value="mixed">Mixto</option><option value="air">Aéreo</option><option value="surface">Superficie</option><option value="subsurface">Submarino</option><option value="electronic">Electrónico</option>
-                  </select>
-                  <select className={sel + " flex-1"} value={sb.threat_level} onChange={(e) => setSb({ ...sb, threat_level: e.target.value })}>
-                    <option value="low">Amenaza baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Crítica</option>
-                  </select>
-                </div>
-                <div className="flex gap-1 flex-wrap">
-                  <select className={sel + " flex-1"} value={`${sbPick.domain}|${sbPick.platform}`} onChange={(e) => { const [d, p] = e.target.value.split("|"); setSbPick({ ...sbPick, domain: d as Domain, platform: p }); }}>
-                    {(Object.keys(PLATFORM_BY_DOMAIN) as Domain[]).map((d) => (
+               {t("")} <div className="hud-panel p-3 space-y-2">
+                 {t("")} <div className="hud-label">{t("Crear escenario")}</div>
+                 {t("")} <Input value={sb.name} onChange={(e) => setSb({ ...sb, name: e.target.value })} placeholder={t("Nombre del escenario")} className="h-8 text-xs" />
+                 {t("")} <div className="flex gap-1">
+                   {t("")} <select className={sel + " flex-1"} value={sb.domain} onChange={(e) => setSb({ ...sb, domain: e.target.value })}>
+                     {t("")} <option value="mixed">{t("Mixto")}</option><option value="air">{t("Aéreo")}</option><option value="surface">{t("Superficie")}</option><option value="subsurface">{t("Submarino")}</option><option value="electronic">{t("Electrónico")}</option>
+                   {t("")} </select>
+                   {t("")} <select className={sel + " flex-1"} value={sb.threat_level} onChange={(e) => setSb({ ...sb, threat_level: e.target.value })}>
+                     {t("")} <option value="low">{t("Amenaza baja")}</option><option value="medium">{t("Media")}</option><option value="high">{t("Alta")}</option><option value="critical">{t("Crítica")}</option>
+                   {t("")} </select>
+                 {t("")} </div>
+                 {t("")} <div className="flex gap-1 flex-wrap">
+                   {t("")} <select className={sel + " flex-1"} value={`${sbPick.domain}|${sbPick.platform}`} onChange={(e) => { const [d, p] = e.target.value.split("|"); setSbPick({ ...sbPick, domain: d as Domain, platform: p }); }}>
+                     {t("")} {(Object.keys(PLATFORM_BY_DOMAIN) as Domain[]).map((d) => (
                       <optgroup key={d} label={DOMAIN_META[d].label}>
-                        {PLATFORM_BY_DOMAIN[d].map((p) => <option key={p} value={`${d}|${p}`}>{p}</option>)}
-                      </optgroup>
+                         {t("")} {PLATFORM_BY_DOMAIN[d].map((p) => <option key={translateText(p)} value={`${d}|${translateText(p)}`}>{translateText(p)}</option>)}
+                       {t("")} </optgroup>
                     ))}
-                  </select>
-                  <Input type="number" min={1} max={20} value={sbPick.count} onChange={(e) => setSbPick({ ...sbPick, count: Number(e.target.value) })} className="h-8 w-14 text-xs" />
-                  <label className="flex items-center gap-1 text-[10px] font-mono"><input type="checkbox" checked={sbPick.hostile} onChange={(e) => setSbPick({ ...sbPick, hostile: e.target.checked })} />Ataca</label>
-                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setSbThreats([...sbThreats, sbPick])}><Plus className="w-3 h-3" /></Button>
-                </div>
-                <div className="space-y-0.5">
-                  {sbThreats.map((t, i) => (
+                   {t("")} </select>
+                   {t("")} <Input type="number" min={1} max={20} value={sbPick.count} onChange={(e) => setSbPick({ ...sbPick, count: Number(e.target.value) })} className="h-8 w-14 text-xs" />
+                   {t("")} <label className="flex items-center gap-1 text-[10px] font-mono"><input type="checkbox" checked={sbPick.hostile} onChange={(e) => setSbPick({ ...sbPick, hostile: e.target.checked })} />{t("Ataca")}</label>
+                   {t("")} <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setSbThreats([...sbThreats, sbPick])}><Plus className="w-3 h-3" /></Button>
+                 {t("")} </div>
+                 {t("")} <div className="space-y-0.5">
+                   {t("")} {sbThreats.map((t, i) => (
                     <div key={i} className="flex justify-between text-[10px] font-mono border border-border/50 px-1">
-                      <span>{t.count}× {t.platform} ({DOMAIN_META[t.domain].abbr}){t.hostile ? " · ATACA" : ""}</span>
-                      <button onClick={() => setSbThreats(sbThreats.filter((_, j) => j !== i))} className="text-destructive">✕</button>
-                    </div>
+                       {t("")} <span>{t.count}× {t.platform} ({DOMAIN_META[t.domain].abbr}){t.hostile ? t(" · ATACA") : t("")}</span>
+                       {t("")} <button onClick={() => setSbThreats(sbThreats.filter((_, j) => j !== i))} className="text-destructive">✕</button>
+                     {t("")} </div>
                   ))}
-                </div>
-                <p className="text-[9px] font-mono text-muted-foreground">"Ataca" solo aplica a misiles, drones kamikaze, lanchas kamikaze y torpedos; esos contactos irán directo contra el buque.</p>
-                <Button size="sm" onClick={saveScenario} className="w-full font-mono text-xs">Guardar escenario</Button>
-                <div className="hud-label pt-1">Escenarios creados</div>
-                <div className="space-y-0.5 max-h-40 overflow-y-auto">
-                  {templates.length === 0 && <div className="text-[10px] font-mono text-muted-foreground">Sin escenarios.</div>}
-                  {templates.map((t) => (
+                 {t("")} </div>
+                 {t("")} <p className="text-[9px] font-mono text-muted-foreground">{t("\"Ataca\" solo aplica a misiles, drones kamikaze, lanchas kamikaze y torpedos; esos contactos irán directo contra el buque.")}</p>
+                 {t("")} <Button size="sm" onClick={saveScenario} className="w-full font-mono text-xs">{t("Guardar escenario")}</Button>
+                 {t("")} <div className="hud-label pt-1">{t("Escenarios creados")}</div>
+                 {t("")} <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                   {t("")} {templates.length === 0 && <div className="text-[10px] font-mono text-muted-foreground">{t("Sin escenarios.")}</div>}
+                   {t("")} {templates.map((t) => (
                     <div key={t.id} className="flex items-center justify-between text-[10px] font-mono border border-border/50 px-1 py-0.5">
-                      <span className="truncate pr-1">{t.name}</span>
-                      <Button size="sm" variant="ghost" onClick={() => setToDeleteScn(t)} className="h-6 px-1.5"><Trash2 className="w-3 h-3" /></Button>
-                    </div>
+                       {t("")} <span className="truncate pr-1">{t.name}</span>
+                       {t("")} <Button size="sm" variant="ghost" onClick={() => setToDeleteScn(t)} className="h-6 px-1.5"><Trash2 className="w-3 h-3" /></Button>
+                     {t("")} </div>
                   ))}
-                </div>
-              </div>
-            </aside>
-          </div>
+                 {t("")} </div>
+               {t("")} </div>
+             {t("")} </aside>
+           {t("")} </div>
         )}
 
-        {!ex && <div className="hud-panel p-6 text-center text-xs font-mono text-muted-foreground">Cree un ejercicio para empezar.</div>}
-      </main>
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent className="hud-panel border-primary/60">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-primary">Eliminar buque</AlertDialogTitle>
-            <AlertDialogDescription className="font-mono text-xs">
-              ¿Desea retirar el buque <span className="text-accent">{toDelete?.name}</span> del ejercicio? Sus puestos asignados también se eliminarán.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="font-mono">Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDelete && removeUnit(toDelete)}>Eliminar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+         {t("")} {!ex && <div className="hud-panel p-6 text-center text-xs font-mono text-muted-foreground">{t("Cree un ejercicio para empezar.")}</div>}
+       {t("")} </main>
+       {t("")} <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+         {t("")} <AlertDialogContent className="hud-panel border-primary/60">
+           {t("")} <AlertDialogHeader>
+             {t("")} <AlertDialogTitle className="font-display text-primary">{t("Eliminar buque")}</AlertDialogTitle>
+             {t("")} <AlertDialogDescription className="font-mono text-xs">
+               {t("¿Desea retirar el buque")} <span className="text-accent">{toDelete?.name}</span>  {t("del ejercicio? Sus puestos asignados también se eliminarán.")} </AlertDialogDescription>
+           {t("")} </AlertDialogHeader>
+           {t("")} <AlertDialogFooter>
+             {t("")} <AlertDialogCancel className="font-mono">{t("Cancelar")}</AlertDialogCancel>
+             {t("")} <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDelete && removeUnit(toDelete)}>{t("Eliminar")}</AlertDialogAction>
+           {t("")} </AlertDialogFooter>
+         {t("")} </AlertDialogContent>
+       {t("")} </AlertDialog>
 
-      <AlertDialog open={!!toDeleteScn} onOpenChange={(o) => !o && setToDeleteScn(null)}>
-        <AlertDialogContent className="hud-panel border-primary/60">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-primary">Eliminar escenario</AlertDialogTitle>
-            <AlertDialogDescription className="font-mono text-xs">
-              ¿Desea eliminar el escenario <span className="text-accent">{toDeleteScn?.name}</span>? Ya no podrá usarse para crear nuevos ejercicios.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="font-mono">Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDeleteScn && removeScenario(toDeleteScn)}>Eliminar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+       {t("")} <AlertDialog open={!!toDeleteScn} onOpenChange={(o) => !o && setToDeleteScn(null)}>
+         {t("")} <AlertDialogContent className="hud-panel border-primary/60">
+           {t("")} <AlertDialogHeader>
+             {t("")} <AlertDialogTitle className="font-display text-primary">{t("Eliminar escenario")}</AlertDialogTitle>
+             {t("")} <AlertDialogDescription className="font-mono text-xs">
+               {t("¿Desea eliminar el escenario")} <span className="text-accent">{toDeleteScn?.name}</span>{t("? Ya no podrá usarse para crear nuevos ejercicios.")} </AlertDialogDescription>
+           {t("")} </AlertDialogHeader>
+           {t("")} <AlertDialogFooter>
+             {t("")} <AlertDialogCancel className="font-mono">{t("Cancelar")}</AlertDialogCancel>
+             {t("")} <AlertDialogAction className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => toDeleteScn && removeScenario(toDeleteScn)}>{t("Eliminar")}</AlertDialogAction>
+           {t("")} </AlertDialogFooter>
+         {t("")} </AlertDialogContent>
+       {t("")} </AlertDialog>
+     {t("")} </div>
   );
 }
 
 function PosEditor({ u, onSave }: { u: Unit; onSave: (b: number, d: number) => void }) {
+  useLanguage();
   const x = Number(u.pos_x_nm), y = Number(u.pos_y_nm);
   const [b, setB] = useState(Math.round(((Math.atan2(x, y) * 180) / Math.PI + 360) % 360));
   const [d, setD] = useState(Math.round(Math.hypot(x, y) * 10) / 10);
   return (
     <div className="flex items-center gap-1 text-[10px] font-mono">
-      <span className="text-muted-foreground">Posición</span>
-      <Input type="number" value={b} onChange={(e) => setB(Number(e.target.value))} className="h-6 w-14 text-[10px]" />°
+       {t("")} <span className="text-muted-foreground">{t("Posición")}</span>
+       {t("")} <Input type="number" value={b} onChange={(e) => setB(Number(e.target.value))} className="h-6 w-14 text-[10px]" />°
       <Input type="number" value={d} onChange={(e) => setD(Number(e.target.value))} className="h-6 w-14 text-[10px]" />NM
-      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => onSave(b, d)}>Mover</Button>
-    </div>
+      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => onSave(b, d)}>{t("Mover")}</Button>
+     {t("")} </div>
   );
 }
 
 const CLS_COLOR: Record<string, string> = { hostile: "hsl(var(--threat-hostile))", friend: "hsl(var(--threat-friend))", neutral: "hsl(var(--threat-neutral))", suspect: "hsl(var(--primary))" };
 
 function FleetPlot({ units, contacts }: { units: Unit[]; contacts: Contact[] }) {
+  useLanguage();
   const pts = [...units.map((u) => ({ x: Number(u.pos_x_nm), y: Number(u.pos_y_nm) })), ...contacts.map((c) => toXY(c))];
   const max = Math.max(10, ...pts.map((p) => Math.max(Math.abs(p.x), Math.abs(p.y)))) * 1.1;
   const S = 200 / max;
   return (
     <svg viewBox="-210 -210 420 420" className="w-full max-h-[480px] bg-hud-bg/60 border border-border">
-      {[0.25, 0.5, 0.75, 1].map((k) => <circle key={k} r={200 * k} fill="none" stroke="hsl(var(--border))" strokeDasharray="2 4" />)}
-      <line x1={-200} y1={0} x2={200} y2={0} stroke="hsl(var(--border))" />
-      <line x1={0} y1={-200} x2={0} y2={200} stroke="hsl(var(--border))" />
-      <text x={4} y={-192} fontSize="9" fill="hsl(var(--muted-foreground))">N · radio {max.toFixed(0)} NM</text>
-      {contacts.map((c) => {
+       {t("")} {[0.25, 0.5, 0.75, 1].map((k) => <circle key={k} r={200 * k} fill="none" stroke="hsl(var(--border))" strokeDasharray="2 4" />)}
+       {t("")} <line x1={-200} y1={0} x2={200} y2={0} stroke="hsl(var(--border))" />
+       {t("")} <line x1={0} y1={-200} x2={0} y2={200} stroke="hsl(var(--border))" />
+       {t("")} <text x={4} y={-192} fontSize="9" fill="hsl(var(--muted-foreground))">{t("N · radio")} {max.toFixed(0)} NM</text>
+       {t("")} {contacts.map((c) => {
         const p = toXY(c);
         const col = CLS_COLOR[c.classification] ?? "hsl(var(--muted-foreground))";
         return (
           <g key={c.id} transform={`translate(${p.x * S},${-p.y * S})`}>
-            <circle r={c.status === "attacking" ? 3.5 : 2.5} fill={col} />
-            {c.status === "attacking" && <circle r={6} fill="none" stroke={col} className="animate-pulse" />}
-            <text x={5} y={3} fontSize="7" fill={col}>{c.track_id}</text>
-          </g>
+             {t("")} <circle r={c.status === "attacking" ? 3.5 : 2.5} fill={col} />
+             {t("")} {c.status === "attacking" && <circle r={6} fill="none" stroke={col} className="animate-pulse" />}
+             {t("")} <text x={5} y={3} fontSize="7" fill={col}>{c.track_id}</text>
+           {t("")} </g>
         );
       })}
-      {units.map((u) => (
+       {t("")} {units.map((u) => (
         <g key={u.id} transform={`translate(${Number(u.pos_x_nm) * S},${-Number(u.pos_y_nm) * S})`}>
-          {u.status === "sunk" ? (
+           {t("")} {u.status === "sunk" ? (
             <text textAnchor="middle" y={4} fontSize="12" fill="hsl(var(--destructive))">✕</text>
           ) : (
             <rect x={-5} y={-5} width={10} height={10} fill="none" stroke="hsl(var(--accent))" strokeWidth={2} />
           )}
-          <text x={8} y={-6} fontSize="9" fill="hsl(var(--accent))">{u.name}</text>
-        </g>
+           {t("")} <text x={8} y={-6} fontSize="9" fill="hsl(var(--accent))">{u.name}</text>
+         {t("")} </g>
       ))}
-    </svg>
+     {t("")} </svg>
   );
 }

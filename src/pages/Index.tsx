@@ -1,3 +1,5 @@
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { t, translateText, locale, useLanguage } from "@/lib/i18n";
 import logoAsset from "@/assets/poseidon.jpeg.asset.json";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +46,7 @@ const TAB_DOMAINS: { key: "ALL" | Domain; label: string; icon: React.ComponentTy
 ];
 
 const Index = () => {
+  useLanguage();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<TacticalEvent[]>([]);
@@ -118,7 +121,7 @@ const Index = () => {
     supabase.from("unit_members").upsert({ unit_id: unitId, user_id: user.id, station }, { onConflict: "unit_id,user_id" }).then(({ error }) => {
       if (error) return toast.error("No se pudo unir al buque: " + error.message);
       setLink({ unitId, station });
-      toast.success(`Enlazado al buque · puesto ${station.toUpperCase()}`);
+      toast.success(t("Enlazado al buque · puesto {0}", station.toUpperCase()));
     });
   }, [user?.id]);
 
@@ -129,7 +132,7 @@ const Index = () => {
     (async () => {
       const { data: u } = await supabase.from("exercise_units").select("*").eq("id", link.unitId).maybeSingle();
       if (!alive) return;
-      if (!u) { setLink(null); toast.error("El buque ya no existe en el ejercicio"); return; }
+      if (!u) { setLink(null); toast.error(t("El buque ya no existe en el ejercicio")); return; }
       setUnit(u);
       const [{ data: ex }, { data: scn }] = await Promise.all([
         supabase.from("exercises").select("*").eq("id", u.exercise_id).maybeSingle(),
@@ -146,7 +149,7 @@ const Index = () => {
     const ch = supabase
       .channel(`unit-${link.unitId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "exercise_units", filter: `id=eq.${link.unitId}` }, (p) => {
-        if (p.eventType === "DELETE") { setLink(null); toast.error("El instructor retiró este buque"); return; }
+        if (p.eventType === "DELETE") { setLink(null); toast.error(t("El instructor retiró este buque")); return; }
         const u = p.new as any;
         setUnit(u);
         if (!isCommandRef.current) {
@@ -158,9 +161,9 @@ const Index = () => {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "exercise_commands" }, (p) => {
         const cmd = p.new as any;
         if (cmd.unit_id && cmd.unit_id !== link.unitId) return;
-        if (cmd.command_type === "start") toast.success("📡 El instructor inició el ejercicio");
-        if (cmd.command_type === "end") { toast.info("🏁 El instructor finalizó el ejercicio"); endTrainingRef.current(); }
-        if (cmd.command_type === "raid") toast.error("🚨 RAID ordenado por el instructor");
+        if (cmd.command_type === "start") toast.success(t("📡 El instructor inició el ejercicio"));
+        if (cmd.command_type === "end") { toast.info(t("🏁 El instructor finalizó el ejercicio")); endTrainingRef.current(); }
+        if (cmd.command_type === "raid") toast.error(t("🚨 RAID ordenado por el instructor"));
         if (!isCommandRef.current) return;
         if (cmd.command_type === "reset") rearmRef.current();
         if (cmd.command_type === "impact" && cmd.payload) applyImpactRef.current(cmd.payload, false);
@@ -279,16 +282,16 @@ const Index = () => {
     shipRef.current = nextShip;
     setShip(nextShip);
     if (hull === 0) {
-      toast.error("☠ BUQUE PERDIDO · fin del ejercicio. Pulse 'Reabastecer y reparar' para reiniciar.");
+      toast.error(t("☠ BUQUE PERDIDO · fin del ejercicio. Pulse 'Reabastecer y reparar' para reiniciar."));
       endTrainingRef.current(true);
     }
     if (dmg >= 25) setSensors((ss) => ss.map((s, i) => (i === Math.floor(Math.random() * ss.length) ? { ...s, status: "degraded" } : s)));
-    toast.error(`💥 IMPACTO · ${c.track_id} (${c.platform_type}) −${dmg}% casco`);
+    toast.error(t("💥 IMPACTO · {0} ({1}) −{2}% casco", c.track_id, c.platform_type, dmg));
     if (local && c.id) {
       supabase.from("contacts").delete().eq("id", c.id).then();
       supabase.from("tactical_events").insert({
         scenario_id: c.scenario_id, contact_id: null, event_type: "impact", domain: c.domain, severity: "critical",
-        message: `💥 IMPACTO EN PROPIA UNIDAD · ${c.track_id} (${c.platform_type}) · daño ${dmg}%`,
+        message: `💥 IMPACTO EN PROPIA UNIDAD · ${c.track_id} (${translateText(c.platform_type)}) · daño ${dmg}%`,
       }).then();
     }
   };
@@ -390,7 +393,7 @@ const Index = () => {
         scenario_id: activeScenario, event_type: "raid", domain: "mixed", severity: "critical",
         message: `🚨 RAID INBOUND · ${wave.length} amenaza(s): ${wave.map((w) => `${w.track_id} ${w.platform_type}`).join(", ")}`,
       });
-      toast.error(`🚨 Raid inbound · ${wave.length} amenaza(s)`);
+      toast.error(t("🚨 Raid inbound · {0} amenaza(s)", wave.length));
     };
     spawn();
     const id = window.setInterval(spawn, Math.max(8000, 22000 - difficulty * 3500));
@@ -431,14 +434,14 @@ const Index = () => {
       severity: "info",
       message: `Escenario activado: ${scn?.name}`,
     });
-    toast.success(`Escenario "${scn?.name}" activado`);
+    toast.success(t("Escenario \"{0}\" activado", scn?.name));
   };
 
   const stop = async () => {
     if (!activeScenario) return;
     await supabase.from("contacts").delete().eq("scenario_id", activeScenario);
     setActiveScenario(null);
-    toast.info("Simulación detenida");
+    toast.info(t("Simulación detenida"));
   };
 
   const addManualContact = async () => {
@@ -506,10 +509,10 @@ const Index = () => {
 
   const fireWeapon = async (w: Weapon, c: Contact, auto = false) => {
     setEngageOpen(false);
-    if (shipRef.current.hull_integrity <= 0) { if (!auto) toast.error("Buque perdido · sistemas de armas inoperativos"); return; }
-    if (c.status === "fleet" || c.status === "sunk") { toast.warning("Unidad propia de la flota · fuego bloqueado"); return; }
+    if (shipRef.current.hull_integrity <= 0) { if (!auto) toast.error(t("Buque perdido · sistemas de armas inoperativos")); return; }
+    if (c.status === "fleet" || c.status === "sunk") { toast.warning(t("Unidad propia de la flota · fuego bloqueado")); return; }
     const cur = weaponsRef.current.find((x) => x.id === w.id);
-    if (!cur || cur.ammo <= 0) { toast.error(`${w.acronym} sin munición`); return; }
+    if (!cur || cur.ammo <= 0) { toast.error(t("{0} sin munición", w.acronym)); return; }
     const prevStatus = c.status;
     setStats((s) => ({ ...s, shots: s.shots + 1 }));
     const notify = (type: "fire" | "kill", payload: any) => {
@@ -530,7 +533,7 @@ const Index = () => {
       severity: "critical",
       message: `🔥 ${auto ? "AUTO-TEWA" : "WEAPONS RELEASE"} · ${w.acronym} → ${c.track_id} · ToF ${tof.toFixed(1)}s · pk ${Math.round(w.pk * 100)}%`,
     }).then();
-    if (!auto) toast.error(`${w.acronym} fired @ ${c.track_id}`);
+    if (!auto) toast.error(t("{0} fired @ {1}", w.acronym, c.track_id));
 
     setTimeout(async () => {
       engagedRef.current.delete(c.id);
@@ -549,7 +552,7 @@ const Index = () => {
           severity: "info",
           message: `💥 SPLASH · ${c.track_id} destruido por ${w.acronym}`,
         });
-        toast.success(`Splash ${c.track_id}`);
+        toast.success(t("Splash {0}", c.track_id));
         setSelectedId((s) => (s === c.id ? null : s));
       } else {
         const back = prevStatus === "attacking" ? "attacking" : "tracking";
@@ -563,7 +566,7 @@ const Index = () => {
           severity: "warning",
           message: `⚠ MISS · ${w.acronym} falló contra ${c.track_id}`,
         });
-        toast.warning(`Miss ${c.track_id} · reattack`);
+        toast.warning(t("Miss {0} · reattack", c.track_id));
       }
     }, Math.min(4000, Math.max(800, tof * 100)));
   };
@@ -583,7 +586,7 @@ const Index = () => {
         message: lost ? "☠ EJERCICIO FINALIZADO · BUQUE PERDIDO" : "Ejercicio de entrenamiento detenido · amenazas retiradas",
       }).then();
     }
-    if (!lost) toast.info("Entrenamiento detenido · amenazas retiradas");
+    if (!lost) toast.info(t("Entrenamiento detenido · amenazas retiradas"));
   };
   endTrainingRef.current = endTraining;
 
@@ -592,7 +595,7 @@ const Index = () => {
     setSensors(INITIAL_SENSORS);
     setShip((s) => ({ ...INITIAL_SHIP, alert_level: s.alert_level, cms_status: s.cms_status }));
     setStats({ kills: 0, impacts: 0, waves: 0, shots: 0 });
-    toast.success("Pañoles reabastecidos · daños reparados");
+    toast.success(t("Pañoles reabastecidos · daños reparados"));
   };
 
   fireRef.current = fireWeapon;
@@ -603,7 +606,7 @@ const Index = () => {
   const requestFire = async (w: Weapon, c: Contact) => {
     if (isCommand) return fireWeapon(w, c);
     const myDomain = link?.station === "aaw" ? "air" : link?.station === "asuw" ? "surface" : link?.station === "asw" ? "subsurface" : "electronic";
-    if (w.domain !== myDomain) return toast.warning("Su puesto solo controla las armas de su guerra");
+    if (w.domain !== myDomain) return toast.warning(t("Su puesto solo controla las armas de su guerra"));
     // Station fires directly; the command station is notified to keep the shared magazine count
     fireWeapon(w, c);
   };
@@ -621,12 +624,12 @@ const Index = () => {
         ? `Track ${c.track_id} en SHADOW · seguimiento prioritario`
         : `Track ${c.track_id} fuera de SHADOW`,
     });
-    toast.success(next === "shadow" ? `${c.track_id} en SHADOW` : `${c.track_id} liberado`);
+    toast.success(next === "shadow" ? t("{0} en SHADOW", c.track_id) : t("{0} liberado", c.track_id));
   };
 
   const jam = async (c: Contact) => {
     if (c.domain !== "electronic" && c.domain !== "air") {
-      toast.warning("JAM solo aplica a emisores aéreos/electrónicos");
+      toast.warning(t("JAM solo aplica a emisores aéreos/electrónicos"));
       return;
     }
     await supabase.from("tactical_events").insert({
@@ -643,16 +646,16 @@ const Index = () => {
       heading: ((c.heading ?? 0) + 45) % 360,
       status: "jammed",
     }).eq("id", c.id);
-    toast.success(`Jamming activo sobre ${c.track_id}`);
+    toast.success(t("Jamming activo sobre {0}", c.track_id));
   };
 
   const classifyAll = async () => {
     const unknowns = contacts.filter((c) => c.classification === "unknown");
     if (unknowns.length === 0) {
-      toast.info("No hay contactos sin clasificar");
+      toast.info(t("No hay contactos sin clasificar"));
       return;
     }
-    toast.info(`Clasificando ${unknowns.length} contactos...`);
+    toast.info(t("Clasificando {0} contactos...", unknowns.length));
     for (const c of unknowns) {
       await classify(c);
     }
@@ -662,7 +665,7 @@ const Index = () => {
     setSensors((ss) => ss.map((s) => {
       if (s.id !== id) return s;
       const next = s.status === "online" ? "standby" : "online";
-      if (s.status === "degraded" || s.status === "offline") toast.success(`${s.acronym} reparado · en servicio`);
+      if (s.status === "degraded" || s.status === "offline") toast.success(t("{0} reparado · en servicio", s.acronym));
       return { ...s, status: next };
     }));
   };
@@ -673,7 +676,7 @@ const Index = () => {
       setShip((s) => ({ ...s, alert_level: lvl }));
       supabase.from("exercise_commands").insert({ exercise_id: unit.exercise_id, unit_id: link.unitId, command_type: "alert", payload: { level: lvl }, created_by: user!.id }).then();
       supabase.from("exercise_units").update({ alert_level: lvl }).eq("id", link.unitId).then();
-      toast.success(`Condición ${lvl === "red" ? "I" : lvl === "yellow" ? "II" : "III"} ordenada para todo el buque`);
+      toast.success(t("Condición {0} ordenada para todo el buque", lvl === "red" ? "I" : lvl === "yellow" ? "II" : "III"));
       return;
     }
     if (fromStation && shipRef.current.alert_level === lvl) return;
@@ -687,7 +690,7 @@ const Index = () => {
         message: `BATTLE STATIONS · CONDICIÓN ${lvl === "white" ? "III" : lvl === "yellow" ? "II" : "I"}`,
       });
     }
-    toast[lvl === "red" ? "error" : "success"](`Condición de alerta ${lvl.toUpperCase()}`);
+    toast[lvl === "red" ? "error" : "success"](t("Condición de alerta {0}", lvl.toUpperCase()));
   };
 
   const [radarRange, setRadarRange] = useState<number>(40);
@@ -714,50 +717,50 @@ const Index = () => {
   const selected = useMemo(() => visibleContacts.find((c) => c.id === selectedId) ?? null, [visibleContacts, selectedId]);
   const filteredContacts = tab === "ALL" ? visibleContacts : visibleContacts.filter((c) => c.domain === tab);
 
-  const now = new Date().toLocaleTimeString("es-CO", { hour12: false });
+  const now = new Date().toLocaleTimeString(locale(), { hour12: false });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-hud-bg/80 backdrop-blur sticky top-0 z-20">
-        <div className="container py-2 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <img src={logoAsset.url} alt="Logo Poseidón" className="w-16 h-16 rounded-full border border-primary/60 shadow-glow-amber object-cover" />
-            <div>
-              <h1 className="font-display text-base text-primary glow-amber">SISTEMA TCM POSEIDÓN · ARC ALM. PADILLA</h1>
-              <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-accent/80">
-                Tactical Combat Manager · AAW · ASuW · ASW · EW · IA Llama+YOLO
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 font-mono text-xs">
-            {user && (
+       {t("")} <header className="border-b border-border bg-hud-bg/80 backdrop-blur sticky top-0 z-20">
+         {t("")} <div className="container py-2 flex flex-wrap items-center justify-between gap-4">
+           {t("")} <div className="flex items-center gap-3">
+             {t("")} <img src={logoAsset.url} alt={t("Logo Poseidón")} className="w-16 h-16 rounded-full border border-primary/60 shadow-glow-amber object-cover" />
+             {t("")} <div>
+               {t("")} <h1 className="font-display text-base text-primary glow-amber">{t("SISTEMA TCM POSEIDÓN · ARC ALM. PADILLA")}</h1>
+               {t("")} <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-accent/80">
+                 {t("Tactical Combat Manager · AAW · ASuW · ASW · EW · IA Llama+YOLO")} </p>
+             {t("")} </div>
+           {t("")} </div>
+           {t("")} <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
+            <LanguageSelector />
+             {t("")} {user && (
               <UnitLinkBar userId={user.id} link={link} unitName={unit?.name} exerciseName={exerciseName}
                 onLink={(l) => { setLink(l); if (!l) { setActiveScenario(null); setTab("ALL"); } }} />
             )}
-            {isInstructor && <Link to="/master" className="text-primary hover:underline">Puesto Maestro</Link>}
-            <button onClick={signOut} className="text-muted-foreground hover:text-accent">Salir</button>
-            <div className="text-muted-foreground">
+             {t("")} {isInstructor && <Link to="/master" className="text-primary hover:underline">{t("Puesto Maestro")}</Link>}
+             {t("")} <button onClick={signOut} className="text-muted-foreground hover:text-accent">{t("Salir")}</button>
+             {t("")} <div className="text-muted-foreground">
               UTC <span className="text-foreground">{now}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-threat-friend animate-pulse" />
-              <span className="text-threat-friend">SYS NOMINAL</span>
-            </div>
-          </div>
-        </div>
-      </header>
+             {t("")} </div>
+             {t("")} <div className="flex items-center gap-1.5">
+               {t("")} <span className="w-2 h-2 rounded-full bg-threat-friend animate-pulse" />
+               {t("")} <span className="text-threat-friend">{t("SYS NOMINAL")}</span>
+             {t("")} </div>
+           {t("")} </div>
+         {t("")} </div>
+       {t("")} </header>
 
-      <main className="container py-4 space-y-3">
-        {link && unit?.status === "sunk" && (
-          <div className="hud-panel p-2 text-center font-mono text-xs text-destructive border-destructive animate-blink-alert">☠ {unit.name} HUNDIDO · FUERA DEL EJERCICIO</div>
+       {t("")} <main className="container py-4 space-y-3">
+         {t("")} {link && unit?.status === "sunk" && (
+          <div className="hud-panel p-2 text-center font-mono text-xs text-destructive border-destructive animate-blink-alert">☠ {unit.name}  {t("HUNDIDO · FUERA DEL EJERCICIO")}</div>
         )}
-        {link && !isCommand && (
-          <div className="hud-panel p-2 font-mono text-[11px] text-muted-foreground">Puesto subordinado · la simulación la controla el puesto de Mando de {unit?.name}. Sus órdenes de fuego se envían al Mando.</div>
+         {t("")} {link && !isCommand && (
+          <div className="hud-panel p-2 font-mono text-[11px] text-muted-foreground">{t("Puesto subordinado · la simulación la controla el puesto de Mando de")} {unit?.name}{t(". Sus órdenes de fuego se envían al Mando.")}</div>
         )}
-        {link && integrated && (
-          <div className="hud-panel p-2 font-mono text-[11px] text-accent">Ejercicio INTEGRADO · {fleet.length} buques en el mismo mar · las amenazas las lanza el instructor. Puede defender a otros buques si la amenaza está a su alcance.</div>
+         {t("")} {link && integrated && (
+          <div className="hud-panel p-2 font-mono text-[11px] text-accent">{t("Ejercicio INTEGRADO ·")} {fleet.length}  {t("buques en el mismo mar · las amenazas las lanza el instructor. Puede defender a otros buques si la amenaza está a su alcance.")}</div>
         )}
-        {isCommand && !integrated && <ScenarioBar
+         {t("")} {isCommand && !integrated && <ScenarioBar
           scenarios={link ? (unitScenario ? [unitScenario] : []) : scenarios}
           activeId={activeScenario}
           onActivate={activateScenario}
@@ -767,11 +770,11 @@ const Index = () => {
           running={!!activeScenario}
         />}
 
-        <DomainStatus contacts={visibleContacts} />
+         {t("")} <DomainStatus contacts={visibleContacts} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-          <aside className="xl:col-span-2 space-y-3">
-            {isCommand && <TrainingPanel
+         {t("")} <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+           {t("")} <aside className="xl:col-span-2 space-y-3">
+             {t("")} {isCommand && <TrainingPanel
               training={training}
               autoDefense={autoDefense}
               difficulty={difficulty}
@@ -780,26 +783,26 @@ const Index = () => {
               sunk={ship.hull_integrity <= 0}
               onToggleTraining={() => {
                 if (training) return endTraining();
-                if (integrated) return toast.info("En ejercicio integrado los ataques los lanza el instructor");
-                if (ship.hull_integrity <= 0) return toast.error("Buque perdido · pulse 'Reabastecer y reparar' primero");
+                if (integrated) return toast.info(t("En ejercicio integrado los ataques los lanza el instructor"));
+                if (ship.hull_integrity <= 0) return toast.error(t("Buque perdido · pulse 'Reabastecer y reparar' primero"));
                 setTraining(true);
-                toast.error("⚠ ENTRENAMIENTO · Amenazas inbound");
+                toast.error(t("⚠ ENTRENAMIENTO · Amenazas inbound"));
               }}
               onToggleAuto={() => setAutoDefense((a) => !a)}
               onDifficulty={setDifficulty}
               onRearm={rearm}
             />}
-            <ShipStatusPanel ship={ship} onAlertChange={setAlertLevel} />
-            <SensorsPanel sensors={sensors} onToggle={toggleSensor} />
-            <div className="hud-panel p-2 text-[10px] font-mono text-muted-foreground">
-              Tracks sostenidos: <span className="text-accent">{visibleContacts.length}</span> / {contacts.length}
-            </div>
-          </aside>
+             {t("")} <ShipStatusPanel ship={ship} onAlertChange={setAlertLevel} />
+             {t("")} <SensorsPanel sensors={sensors} onToggle={toggleSensor} />
+             {t("")} <div className="hud-panel p-2 text-[10px] font-mono text-muted-foreground">
+               {t("Tracks sostenidos:")} <span className="text-accent">{visibleContacts.length}</span> / {contacts.length}
+             {t("")} </div>
+           {t("")} </aside>
 
-          <section className="xl:col-span-8">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-              <TabsList className="bg-card/60 border border-border h-auto p-1 flex-wrap">
-                {TAB_DOMAINS.map((t) => {
+           {t("")} <section className="xl:col-span-8">
+             {t("")} <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+               {t("")} <TabsList className="bg-card/60 border border-border h-auto p-1 flex-wrap">
+                 {t("")} {TAB_DOMAINS.map((t) => {
                   const Icon = t.icon;
                   return (
                     <TabsTrigger
@@ -807,38 +810,36 @@ const Index = () => {
                       value={t.key}
                       className="font-mono uppercase text-xs tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow-amber"
                     >
-                      <Icon className="w-3.5 h-3.5 mr-1.5" />
-                      {t.label}
-                    </TabsTrigger>
+                       {t("")} <Icon className="w-3.5 h-3.5 mr-1.5" />
+                       {t("")} {translateText(t.label)}
+                     {t("")} </TabsTrigger>
                   );
                 })}
-              </TabsList>
+               {t("")} </TabsList>
 
-              {TAB_DOMAINS.map((t) => (
+               {t("")} {TAB_DOMAINS.map((t) => (
                 <TabsContent key={t.key} value={t.key} className="mt-3">
-                  <div className="space-y-3">
-                    {/* View toggle */}
-                    <div className="flex justify-center">
-                      <div className="hud-panel inline-flex p-1 gap-1">
-                        <button
+                   {t("")} <div className="space-y-3">
+                     {t("")} {/* View toggle */}
+                     {t("")} <div className="flex justify-center">
+                       {t("")} <div className="hud-panel inline-flex p-1 gap-1">
+                         {t("")} <button
                           onClick={() => setViewMode("ppi")}
                           className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded ${viewMode === "ppi" ? "bg-primary text-primary-foreground shadow-glow-amber" : "text-muted-foreground hover:text-accent"}`}
                         >
-                          PPI · Radar Táctico
-                        </button>
-                        <button
+                           {t("PPI · Radar Táctico")} </button>
+                         {t("")} <button
                           onClick={() => setViewMode("chart")}
                           className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded ${viewMode === "chart" ? "bg-primary text-primary-foreground shadow-glow-amber" : "text-muted-foreground hover:text-accent"}`}
                         >
-                          Carta Náutica Global
-                        </button>
-                      </div>
-                    </div>
+                           {t("Carta Náutica Global")} </button>
+                       {t("")} </div>
+                     {t("")} </div>
 
-                    {/* Radar / Chart centered & large */}
-                    <div className="flex justify-center">
-                      <div className="w-full max-w-[820px]">
-                        {viewMode === "ppi" ? (
+                     {t("")} {/* Radar / Chart centered & large */}
+                     {t("")} <div className="flex justify-center">
+                       {t("")} <div className="w-full max-w-[820px]">
+                         {t("")} {viewMode === "ppi" ? (
                           <TacticalRadar
                             ownName={unit?.name ?? "ARC ALM. PADILLA"}
                             contacts={visibleContacts}
@@ -862,21 +863,21 @@ const Index = () => {
                             showWeaponRings={showWeaponRings}
                           />
                         )}
-                      </div>
-                    </div>
+                       {t("")} </div>
+                     {t("")} </div>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-                      <div className="xl:col-span-4">
-                        <ContactList
+                     {t("")} <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+                       {t("")} <div className="xl:col-span-4">
+                         {t("")} <ContactList
                           contacts={filteredContacts}
                           selectedId={selectedId}
                           onSelect={setSelectedId}
                           onClassify={classify}
                           classifyingId={classifyingId}
                         />
-                      </div>
-                      <div className="xl:col-span-4">
-                        <ContactDetail
+                       {t("")} </div>
+                       {t("")} <div className="xl:col-span-4">
+                         {t("")} <ContactDetail
                           contact={selected}
                           onEngage={openEngage}
                           onShadow={shadow}
@@ -884,13 +885,13 @@ const Index = () => {
                           onClassify={classify}
                           classifying={classifyingId === selected?.id}
                         />
-                      </div>
-                      <div className="xl:col-span-4">
-                        <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
-                      </div>
-                    </div>
+                       {t("")} </div>
+                       {t("")} <div className="xl:col-span-4">
+                         {t("")} <EventLog events={t.key === "ALL" ? events : events.filter((e) => e.domain === t.key)} />
+                       {t("")} </div>
+                     {t("")} </div>
 
-                    <VisualIntelPanel
+                     {t("")} <VisualIntelPanel
                       contacts={visibleContacts}
                       onSelectTrack={setSelectedId}
                       onApplyClassification={async (trackId, det) => {
@@ -910,31 +911,31 @@ const Index = () => {
                           severity: det.classification === "hostile" ? "critical" : "info",
                           message: `📷 VISUAL ID · ${c.track_id} → ${det.label} (${det.classification.toUpperCase()}) conf ${(det.confidence*100).toFixed(0)}%`,
                         });
-                        toast.success(`${c.track_id} actualizado por Visual ID`);
+                        toast.success(t("{0} actualizado por Visual ID", c.track_id));
                       }}
                     />
-                  </div>
-                </TabsContent>
+                   {t("")} </div>
+                 {t("")} </TabsContent>
               ))}
-            </Tabs>
-          </section>
+             {t("")} </Tabs>
+           {t("")} </section>
 
-          <aside className="xl:col-span-2">
-            <WeaponsPanel
+           {t("")} <aside className="xl:col-span-2">
+             {t("")} <WeaponsPanel
               weapons={weapons}
               filter={tab === "ALL" ? "all" : tab}
               onSelect={(w) => {
-                if (!selected) return toast.warning("Seleccione un contacto antes de disparar");
-                if (w.domain !== selected.domain) return toast.warning(`${w.acronym} no aplica a dominio ${selected.domain}`);
-                if (w.ammo <= 0) return toast.error(`${w.acronym} sin munición`);
-                if ((selected.range_nm ?? 0) > w.range_nm) return toast.warning(`${selected.track_id} fuera de alcance (${(selected.range_nm ?? 0).toFixed(1)} > ${w.range_nm} NM)`);
+                if (!selected) return toast.warning(t("Seleccione un contacto antes de disparar"));
+                if (w.domain !== selected.domain) return toast.warning(t("{0} no aplica a dominio {1}", w.acronym, selected.domain));
+                if (w.ammo <= 0) return toast.error(t("{0} sin munición", w.acronym));
+                if ((selected.range_nm ?? 0) > w.range_nm) return toast.warning(t("{0} fuera de alcance ({1} > {2} NM)", selected.track_id, (selected.range_nm ?? 0).toFixed(1), w.range_nm));
                 requestFire(w, selected);
               }}
             />
-          </aside>
-        </div>
+           {t("")} </aside>
+         {t("")} </div>
 
-        <EngagementDialog
+         {t("")} <EngagementDialog
           open={engageOpen}
           contact={engageContact}
           weapons={weapons}
@@ -942,11 +943,10 @@ const Index = () => {
           onFire={requestFire}
         />
 
-        <footer className="text-center text-[10px] font-mono uppercase tracking-[0.3em] text-muted-foreground pt-4">
-          ARMADA NACIONAL DE COLOMBIA · DEMOSTRADOR · NO APTO PARA OPERACIONES REALES
-        </footer>
-      </main>
-    </div>
+         {t("")} <footer className="text-center text-[10px] font-mono uppercase tracking-[0.3em] text-muted-foreground pt-4">
+           {t("ARMADA NACIONAL DE COLOMBIA · DEMOSTRADOR · NO APTO PARA OPERACIONES REALES")} </footer>
+       {t("")} </main>
+     {t("")} </div>
   );
 };
 

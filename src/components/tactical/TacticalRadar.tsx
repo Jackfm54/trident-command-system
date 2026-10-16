@@ -1,3 +1,4 @@
+import { t, translateText, locale, useLanguage } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Contact, Domain, CLASSIFICATION_META } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
@@ -38,6 +39,7 @@ export function TacticalRadar({
   onToggleWeaponRings,
   ownName = "ARC ALM. PADILLA",
 }: Props) {
+  useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const [showTrails, setShowTrails] = useState(true);
   const trailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
@@ -93,23 +95,23 @@ export function TacticalRadar({
 
   return (
     <div className="space-y-2">
-      {/* Controls */}
-      <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <span className="hud-label">RANGE</span>
-          <div className="flex items-center gap-1">
-            <Button size="icon" variant="outline" className="h-7 w-7" onClick={zoomIn} title="Zoom in / acercar">
-              <ZoomIn className="h-3.5 w-3.5" />
-            </Button>
-            <span className="font-mono text-sm text-primary glow-amber tabular-nums w-16 text-center">
-              {rangeNm} NM
+       {t("")} {/* Controls */}
+       {t("")} <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
+         {t("")} <div className="flex items-center gap-2">
+           {t("")} <span className="hud-label">{t("RANGE")}</span>
+           {t("")} <div className="flex items-center gap-1">
+             {t("")} <Button size="icon" variant="outline" className="h-7 w-7" onClick={zoomIn} title={t("Zoom in / acercar")}>
+               {t("")} <ZoomIn className="h-3.5 w-3.5" />
+             {t("")} </Button>
+             {t("")} <span className="font-mono text-sm text-primary glow-amber tabular-nums w-16 text-center">
+               {t("")} {rangeNm} NM
             </span>
-            <Button size="icon" variant="outline" className="h-7 w-7" onClick={zoomOut} title="Zoom out / alejar">
-              <ZoomOut className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-1 ml-2">
-            {RANGE_PRESETS.map((r) => (
+             {t("")} <Button size="icon" variant="outline" className="h-7 w-7" onClick={zoomOut} title={t("Zoom out / alejar")}>
+               {t("")} <ZoomOut className="h-3.5 w-3.5" />
+             {t("")} </Button>
+           {t("")} </div>
+           {t("")} <div className="flex items-center gap-1 ml-2">
+             {t("")} {RANGE_PRESETS.map((r) => (
               <button
                 key={r}
                 onClick={() => onRangeChange(r)}
@@ -119,51 +121,51 @@ export function TacticalRadar({
                     : "border-border text-muted-foreground hover:text-accent hover:border-accent"
                 }`}
               >
-                {r}
-              </button>
+                 {t("")} {r}
+               {t("")} </button>
             ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
+           {t("")} </div>
+         {t("")} </div>
+         {t("")} <div className="flex items-center gap-2">
+           {t("")} <Button
             size="sm"
             variant={showTrails ? "default" : "outline"}
             onClick={() => setShowTrails((v) => !v)}
             className="h-7 text-[10px] font-mono uppercase tracking-wider"
           >
-            <Footprints className="h-3 w-3 mr-1" />
-            Estela {showTrails ? "ON" : "OFF"}
-          </Button>
-          <Button
+             {t("")} <Footprints className="h-3 w-3 mr-1" />
+             {t("Estela")} {showTrails ? "ON" : "OFF"}
+           {t("")} </Button>
+           {t("")} <Button
             size="sm"
             variant={showWeaponRings ? "default" : "outline"}
             onClick={onToggleWeaponRings}
             className="h-7 text-[10px] font-mono uppercase tracking-wider"
           >
-            <Maximize2 className="h-3 w-3 mr-1" />
-            Coberturas {showWeaponRings ? "ON" : "OFF"}
-          </Button>
-        </div>
-      </div>
+             {t("")} <Maximize2 className="h-3 w-3 mr-1" />
+             {t("Coberturas")} {showWeaponRings ? "ON" : "OFF"}
+           {t("")} </Button>
+         {t("")} </div>
+       {t("")} </div>
 
-      <div ref={ref} className="hud-panel relative aspect-square w-full max-w-[820px] mx-auto bg-gradient-hud overflow-hidden">
-        <svg viewBox="0 0 400 400" className="absolute inset-0 w-full h-full">
-          <defs>
-            <radialGradient id="ringGrad">
-              <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.2" />
-            </radialGradient>
-          </defs>
+       {t("")} <div ref={ref} className="hud-panel relative aspect-square w-full max-w-[820px] mx-auto bg-gradient-hud overflow-hidden">
+         {t("")} <svg viewBox="0 0 400 400" className="absolute inset-0 w-full h-full">
+           {t("")} <defs>
+             {t("")} <radialGradient id="ringGrad">
+               {t("")} <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.05" />
+               {t("")} <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.2" />
+             {t("")} </radialGradient>
+           {t("")} </defs>
 
-          {/* Range rings */}
-          {rings.map((ring) => (
+           {t("")} {/* Range rings */}
+           {t("")} {rings.map((ring) => (
             <circle
               key={ring.nm}
               cx="200" cy="200" r={ring.r}
               fill="none" stroke="hsl(var(--accent))" strokeOpacity="0.25" strokeWidth="0.5"
             />
           ))}
-          {[0, 45, 90, 135].map((a) => (
+           {t("")} {[0, 45, 90, 135].map((a) => (
             <line
               key={a}
               x1="200" y1="200"
@@ -172,7 +174,7 @@ export function TacticalRadar({
               stroke="hsl(var(--accent))" strokeOpacity="0.2" strokeWidth="0.5"
             />
           ))}
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+           {t("")} {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
             <text
               key={a}
               x={200 + 205 * Math.sin((a * Math.PI) / 180)}
@@ -184,10 +186,10 @@ export function TacticalRadar({
               dominantBaseline="middle"
               opacity="0.7"
             >
-              {String(a).padStart(3, "0")}
-            </text>
+               {t("")} {String(a).padStart(3, "0")}
+             {t("")} </text>
           ))}
-          {rings.map((ring) => (
+           {t("")} {rings.map((ring) => (
             <text
               key={`lbl-${ring.nm}`}
               x="202"
@@ -197,12 +199,12 @@ export function TacticalRadar({
               fontFamily="JetBrains Mono"
               opacity="0.55"
             >
-              {ring.nm.toFixed(ring.nm < 10 ? 1 : 0)}nm
+               {t("")} {ring.nm.toFixed(ring.nm < 10 ? 1 : 0)}nm
             </text>
           ))}
 
-          {/* Weapon coverage rings */}
-          {visibleWeapons.map((w, i) => {
+           {t("")} {/* Weapon coverage rings */}
+           {t("")} {visibleWeapons.map((w, i) => {
             const wr = Math.min(w.range_nm * scale, 360);
             if (wr < 4) return null;
             const color = `hsl(${WEAPON_RING_COLOR[w.domain]})`;
@@ -213,14 +215,14 @@ export function TacticalRadar({
             const lblY = 200 - (wr - 8) * Math.cos((bearing * Math.PI) / 180);
             return (
               <g key={w.id} opacity="0.55">
-                <circle
+                 {t("")} <circle
                   cx="200" cy="200" r={wr}
                   fill="none"
                   stroke={color}
                   strokeWidth="0.7"
                   strokeDasharray={dash}
                 />
-                <text
+                 {t("")} <text
                   x={lblX}
                   y={lblY}
                   fill={color}
@@ -230,26 +232,26 @@ export function TacticalRadar({
                   textAnchor="middle"
                   style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                 >
-                  {w.acronym} {w.range_nm}nm
+                   {t("")} {w.acronym}  {t("")} {w.range_nm}nm
                 </text>
-              </g>
+               {t("")} </g>
             );
           })}
 
-          {/* Sweep */}
-          <g style={{ transformOrigin: "200px 200px", animation: "radar-sweep 6s linear infinite" }}>
-            <path d="M 200 200 L 200 5 A 195 195 0 0 1 333 95 Z" fill="url(#ringGrad)" opacity="0.6" />
-          </g>
+           {t("")} {/* Sweep */}
+           {t("")} <g style={{ transformOrigin: "200px 200px", animation: "radar-sweep 6s linear infinite" }}>
+             {t("")} <path d="M 200 200 L 200 5 A 195 195 0 0 1 333 95 Z" fill="url(#ringGrad)" opacity="0.6" />
+           {t("")} </g>
 
-          {/* Own ship */}
-          <g>
-            <circle cx="200" cy="200" r="5" fill="hsl(var(--threat-friend))" />
-            <circle cx="200" cy="200" r="9" fill="none" stroke="hsl(var(--threat-friend))" strokeWidth="1" />
-            <text x="208" y="204" fill="hsl(var(--threat-friend))" fontSize="9" fontFamily="JetBrains Mono">{ownName}</text>
-          </g>
+           {t("")} {/* Own ship */}
+           {t("")} <g>
+             {t("")} <circle cx="200" cy="200" r="5" fill="hsl(var(--threat-friend))" />
+             {t("")} <circle cx="200" cy="200" r="9" fill="none" stroke="hsl(var(--threat-friend))" strokeWidth="1" />
+             {t("")} <text x="208" y="204" fill="hsl(var(--threat-friend))" fontSize="9" fontFamily="JetBrains Mono">{ownName}</text>
+           {t("")} </g>
 
-          {/* Trails */}
-          {showTrails && filtered.map((c) => {
+           {t("")} {/* Trails */}
+           {t("")} {showTrails && filtered.map((c) => {
             const trail = trailsRef.current.get(c.id);
             if (!trail || trail.length < 2) return null;
             const meta = CLASSIFICATION_META[c.classification];
@@ -257,16 +259,16 @@ export function TacticalRadar({
             const d = trail.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
             return (
               <g key={`trail-${c.id}`} opacity="0.7">
-                <path d={d} fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="2 2" opacity="0.55" />
-                {trail.slice(-6).map((p, i) => (
+                 {t("")} <path d={d} fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="2 2" opacity="0.55" />
+                 {t("")} {trail.slice(-6).map((p, i) => (
                   <circle key={i} cx={p.x} cy={p.y} r={0.8 + i * 0.25} fill={color} opacity={0.15 + i * 0.12} />
                 ))}
-              </g>
+               {t("")} </g>
             );
           })}
 
-          {/* Contacts */}
-          {filtered.map((c) => {
+           {t("")} {/* Contacts */}
+           {t("")} {filtered.map((c) => {
             const rawCr = (c.range_nm ?? 0) * scale;
             const cr = Math.min(rawCr, 195);
             const a = ((c.bearing ?? 0) * Math.PI) / 180;
@@ -285,12 +287,12 @@ export function TacticalRadar({
             const labelAnchor = x > 200 ? "start" : "end";
             return (
               <g key={c.id} onClick={() => onSelect?.(c.id)} style={{ cursor: "pointer" }}>
-                {selected && <circle cx={x} cy={y} r="14" fill="none" stroke={color} strokeWidth="1" opacity="0.7" />}
-                {/* Heading vector */}
-                {spd > 0 && (
+                 {t("")} {selected && <circle cx={x} cy={y} r="14" fill="none" stroke={color} strokeWidth="1" opacity="0.7" />}
+                 {t("")} {/* Heading vector */}
+                 {t("")} {spd > 0 && (
                   <line x1={x} y1={y} x2={vx} y2={vy} stroke={color} strokeWidth="1" opacity="0.85" />
                 )}
-                <text
+                 {t("")} <text
                   x={x} y={y + 4}
                   fill={color}
                   fontSize={c.classification === "hostile" ? 18 : 14}
@@ -298,37 +300,37 @@ export function TacticalRadar({
                   fontWeight="bold"
                   textAnchor="middle"
                   style={c.classification === "hostile" ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
-                  className={c.classification === "hostile" ? "animate-pulse-threat" : ""}
+                  className={c.classification === "hostile" ? "animate-pulse-threat" : t("")}
                 >
-                  {meta.symbol}
-                </text>
-                {/* Data block: track_id / heading-speed / range */}
-                <g
+                   {t("")} {meta.symbol}
+                 {t("")} </text>
+                 {t("")} {/* Data block: track_id / heading-speed / range */}
+                 {t("")} <g
                   fontFamily="JetBrains Mono"
                   fontSize="6.5"
                   fill={color}
                   textAnchor={labelAnchor}
                   style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 1.8 }}
                 >
-                  <text x={x + labelOffsetX} y={y - 6} fontWeight="bold">{c.track_id}</text>
-                  <text x={x + labelOffsetX} y={y + 2} opacity="0.9">
-                    {String(Math.round(c.heading ?? 0)).padStart(3, "0")}° · {Math.round(spd)}kt
+                   {t("")} <text x={x + labelOffsetX} y={y - 6} fontWeight="bold">{c.track_id}</text>
+                   {t("")} <text x={x + labelOffsetX} y={y + 2} opacity="0.9">
+                     {t("")} {String(Math.round(c.heading ?? 0)).padStart(3, "0")}° · {Math.round(spd)}kt
                   </text>
-                  <text x={x + labelOffsetX} y={y + 10} opacity="0.85">
-                    {(c.range_nm ?? 0).toFixed(1)}nm
+                   {t("")} <text x={x + labelOffsetX} y={y + 10} opacity="0.85">
+                     {t("")} {(c.range_nm ?? 0).toFixed(1)}nm
                   </text>
-                </g>
-              </g>
+                 {t("")} </g>
+               {t("")} </g>
             );
           })}
-        </svg>
+         {t("")} </svg>
 
-        {/* HUD overlay corners */}
-        <div className="absolute top-2 left-3 hud-label">PPI · {ownName}</div>
-        <div className="absolute top-2 right-3 hud-label glow-cyan">RNG {rangeNm}NM</div>
-        <div className="absolute bottom-2 left-3 hud-label">CONTACTS: <span className="hud-value text-primary">{filtered.length}</span></div>
-        <div className="absolute bottom-2 right-3 hud-label">MODE: <span className="text-primary">AUTO</span></div>
-      </div>
-    </div>
+         {t("")} {/* HUD overlay corners */}
+         {t("")} <div className="absolute top-2 left-3 hud-label">PPI · {ownName}</div>
+         {t("")} <div className="absolute top-2 right-3 hud-label glow-cyan">RNG {rangeNm}NM</div>
+         {t("")} <div className="absolute bottom-2 left-3 hud-label">{t("CONTACTS:")} <span className="hud-value text-primary">{filtered.length}</span></div>
+         {t("")} <div className="absolute bottom-2 right-3 hud-label">{t("MODE:")} <span className="text-primary">AUTO</span></div>
+       {t("")} </div>
+     {t("")} </div>
   );
 }

@@ -1,3 +1,4 @@
+import { t, translateText, locale, useLanguage } from "@/lib/i18n";
 import { ShipSystem } from "@/lib/combatSystems";
 import { Anchor, Battery, Cpu, Heart } from "lucide-react";
 
@@ -13,37 +14,39 @@ interface Props {
 }
 
 function Bar({ label, value, icon: Icon }: { label: string; value: number; icon: React.ComponentType<{ className?: string }> }) {
+  useLanguage();
   const color = value > 70 ? "bg-threat-friend" : value > 40 ? "bg-primary" : "bg-destructive";
   return (
     <div className="space-y-0.5">
-      <div className="flex items-center justify-between font-mono text-[10px]">
-        <span className="flex items-center gap-1 text-muted-foreground uppercase tracking-wider">
-          <Icon className="w-3 h-3" />
-          {label}
-        </span>
-        <span className="text-foreground tabular-nums">{Math.round(value)}%</span>
-      </div>
-      <div className="h-1 bg-secondary">
-        <div className={`h-full ${color}`} style={{ width: `${value}%` }} />
-      </div>
-    </div>
+       {t("")} <div className="flex items-center justify-between font-mono text-[10px]">
+         {t("")} <span className="flex items-center gap-1 text-muted-foreground uppercase tracking-wider">
+           {t("")} <Icon className="w-3 h-3" />
+           {t("")} {label}
+         {t("")} </span>
+         {t("")} <span className="text-foreground tabular-nums">{Math.round(value)}%</span>
+       {t("")} </div>
+       {t("")} <div className="h-1 bg-secondary">
+         {t("")} <div className={`h-full ${color}`} style={{ width: `${value}%` }} />
+       {t("")} </div>
+     {t("")} </div>
   );
 }
 
 export function ShipStatusPanel({ ship, onAlertChange }: Props) {
+  useLanguage();
   return (
     <div className="hud-panel p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="hud-label">ARC-FRAGATA · Estado</span>
-        <span className="hud-label glow-cyan">CMS {ship.cms_status.toUpperCase()}</span>
-      </div>
-      <Bar label="Casco" value={ship.hull_integrity} icon={Heart} />
-      <Bar label="Propulsión" value={ship.propulsion} icon={Anchor} />
-      <Bar label="Energía" value={ship.power} icon={Battery} />
-      <div className="pt-1 border-t border-border/40">
-        <div className="hud-label mb-1 flex items-center gap-1"><Cpu className="w-3 h-3" /> Battle Stations</div>
-        <div className="grid grid-cols-3 gap-1">
-          {(["white", "yellow", "red"] as const).map((lvl) => (
+       {t("")} <div className="flex items-center justify-between">
+         {t("")} <span className="hud-label">{t("ARC-FRAGATA · Estado")}</span>
+         {t("")} <span className="hud-label glow-cyan">CMS {t(ship.cms_status).toUpperCase()}</span>
+       {t("")} </div>
+       {t("")} <Bar label={t("Casco")} value={ship.hull_integrity} icon={Heart} />
+       {t("")} <Bar label={t("Propulsión")} value={ship.propulsion} icon={Anchor} />
+       {t("")} <Bar label={t("Energía")} value={ship.power} icon={Battery} />
+       {t("")} <div className="pt-1 border-t border-border/40">
+         {t("")} <div className="hud-label mb-1 flex items-center gap-1"><Cpu className="w-3 h-3" />  {t("Battle Stations")}</div>
+         {t("")} <div className="grid grid-cols-3 gap-1">
+           {t("")} {([t("white"), t("yellow"), t("red")] as const).map((lvl) => (
             <button
               key={lvl}
               onClick={() => onAlertChange(lvl)}
@@ -52,10 +55,10 @@ export function ShipStatusPanel({ ship, onAlertChange }: Props) {
               }`}
             >
               COND {lvl === "white" ? "III" : lvl === "yellow" ? "II" : "I"}
-            </button>
+             {t("")} </button>
           ))}
-        </div>
-      </div>
-    </div>
+         {t("")} </div>
+       {t("")} </div>
+     {t("")} </div>
   );
 }
