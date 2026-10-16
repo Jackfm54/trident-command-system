@@ -26,20 +26,6 @@ export interface Weapon {
   description: string;
 }
 
-// A weapon round in flight, rendered on the radar/chart
-export interface Shot {
-  id: string;
-  acronym: string;
-  domain: Domain;
-  type: Weapon["type"];
-  contactId: string;
-  trackId: string;
-  bearing: number;   // target bearing at launch
-  range_nm: number;  // target range at launch
-  start: number;     // Date.now() at launch
-  duration: number;  // ms of flight
-}
-
 export interface ShipSystem {
   hull_integrity: number; // 0-100
   propulsion: number;

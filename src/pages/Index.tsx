@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META } from "@/types/tactical";
 import { advanceContact, generateRandomContact } from "@/lib/simulator";
-import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem, Shot } from "@/lib/combatSystems";
+import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem } from "@/lib/combatSystems";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TacticalRadar } from "@/components/tactical/TacticalRadar";
 import { NauticalChart } from "@/components/tactical/NauticalChart";
@@ -55,7 +55,6 @@ const Index = () => {
   const [weapons, setWeapons] = useState<Weapon[]>(() => load("tcm.weapons", INITIAL_WEAPONS));
   const [ship, setShip] = useState<ShipSystem>(() => load("tcm.ship", INITIAL_SHIP));
   const [engageOpen, setEngageOpen] = useState(false);
-  const [shots, setShots] = useState<Shot[]>([]);
   const [engageContact, setEngageContact] = useState<Contact | null>(null);
   const [training, setTraining] = useState(false);
   const [autoDefense, setAutoDefense] = useState(false);
@@ -523,14 +522,6 @@ const Index = () => {
     engagedRef.current.add(c.id);
     supabase.from("contacts").update({ status: "engaged" }).eq("id", c.id).then();
     const tof = ((c.range_nm ?? 0) / Math.max(1, w.speed_kts)) * 3600;
-    const flightMs = Math.min(4000, Math.max(800, tof * 100));
-    const shotId = `shot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setShots((s) => [...s, {
-      id: shotId, acronym: w.acronym, domain: w.domain, type: w.type,
-      contactId: c.id, trackId: c.track_id,
-      bearing: c.bearing ?? 0, range_nm: c.range_nm ?? 0,
-      start: Date.now(), duration: flightMs,
-    }]);
     supabase.from("tactical_events").insert({
       scenario_id: c.scenario_id,
       contact_id: c.id,
@@ -542,7 +533,6 @@ const Index = () => {
     if (!auto) toast.error(`${w.acronym} fired @ ${c.track_id}`);
 
     setTimeout(async () => {
-      setShots((s) => s.filter((x) => x.id !== shotId));
       engagedRef.current.delete(c.id);
       if (!contactsRef.current.some((x) => x.id === c.id)) return; // already impacted/destroyed
       const hit = Math.random() < w.pk;
@@ -575,7 +565,7 @@ const Index = () => {
         });
         toast.warning(`Miss ${c.track_id} · reattack`);
       }
-    }, flightMs);
+    }, Math.min(4000, Math.max(800, tof * 100)));
   };
 
   const endTraining = (lost = false) => {
@@ -858,7 +848,6 @@ const Index = () => {
                             rangeNm={radarRange}
                             onRangeChange={setRadarRange}
                             weapons={weapons}
-                            shots={shots}
                             showWeaponRings={showWeaponRings}
                             onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
                           />
@@ -870,7 +859,6 @@ const Index = () => {
                             selectedId={selectedId}
                             onSelect={setSelectedId}
                             weapons={weapons}
-                            shots={shots}
                             showWeaponRings={showWeaponRings}
                           />
                         )}
