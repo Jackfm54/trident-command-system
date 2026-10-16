@@ -10,9 +10,12 @@ describe("language selection", () => {
     expect(parseLanguage("de")).toBe("es");
     expect(parseLanguage(null)).toBe("es");
   });
-  it.each(LANGUAGES)("persists %s locally and sets the document language", (value) => {
-    setLanguage(value);
-    expect(localStorage.getItem("tcm.language")).toBe(value);
-    expect(document.documentElement.lang).toBe(value);
-  });
+  it.each(LANGUAGES)(
+    "persists %s locally and sets the document language",
+    (value) => {
+      setLanguage(value);
+      expect(localStorage.getItem("tcm.language")).toBe(value);
+      expect(document.documentElement.lang).toBe(value);
+    },
+  );
 });
