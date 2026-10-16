@@ -27,6 +27,62 @@ const WEAPON_RING_COLOR: Record<Domain, string> = {
   electronic: "var(--domain-electronic)",
 };
 
+// Realistic projectile glyph drawn pointing "up" (0°) and rotated along its flight path.
+// Missiles get a body, wings and a flickering exhaust flame; torpedoes a hull with
+// propeller wake; guns/CIWS a burst of tracer rounds.
+function ShotGlyph({ wtype, color, angleDeg, px, py }: { wtype: ShotInFlight["wtype"]; color: string; angleDeg: number; px: number; py: number }) {
+  if (wtype === "missile" || wtype === "rocket") {
+    return (
+      <g transform={`translate(${px} ${py}) rotate(${angleDeg})`} style={{ filter: `drop-shadow(0 0 3px ${color})` }}>
+        {/* exhaust plume */}
+        <line x1="0" y1="6" x2="0" y2="18" stroke={color} strokeWidth="1.6" opacity="0.35" strokeLinecap="round" />
+        <line x1="0" y1="6" x2="0" y2="12" stroke="#fff" strokeWidth="0.9" opacity="0.5" strokeLinecap="round" />
+        {/* flame */}
+        <ellipse className="animate-flame" cx="0" cy="6.5" rx="1.6" ry="3.4" fill="url(#shotFlame)" />
+        {/* body */}
+        <rect x="-1.1" y="-8" width="2.2" height="13" rx="1" fill={color} stroke="#fff" strokeWidth="0.3" />
+        {/* nose cone */}
+        <path d="M -1.1 -8 L 0 -12 L 1.1 -8 Z" fill={color} />
+        {/* wings */}
+        <path d="M -1.1 0 L -3.2 4 L -1.1 4 Z M 1.1 0 L 3.2 4 L 1.1 4 Z" fill={color} opacity="0.9" />
+      </g>
+    );
+  }
+  if (wtype === "torpedo") {
+    return (
+      <g transform={`translate(${px} ${py}) rotate(${angleDeg})`} style={{ filter: `drop-shadow(0 0 3px ${color})` }}>
+        {/* bubble wake */}
+        {[7, 10, 13, 16].map((dy, i) => (
+          <circle key={dy} className="animate-bubble" style={{ animationDelay: `${i * 0.3}s` }} cx={i % 2 === 0 ? -0.8 : 0.8} cy={dy} r={0.9 - i * 0.15} fill="#e0f2fe" opacity="0.7" />
+        ))}
+        {/* hull */}
+        <rect x="-1.3" y="-9" width="2.6" height="15" rx="1.3" fill={color} stroke="#fff" strokeWidth="0.3" />
+        <path d="M -1.3 -9 A 1.3 1.3 0 0 1 1.3 -9 Z" fill="#e2e8f0" />
+        {/* tail fins */}
+        <path d="M -1.3 3 L -2.8 6.5 L -1.3 6 Z M 1.3 3 L 2.8 6.5 L 1.3 6 Z" fill={color} />
+      </g>
+    );
+  }
+  if (wtype === "gun" || wtype === "ciws") {
+    return (
+      <g transform={`translate(${px} ${py}) rotate(${angleDeg})`} style={{ filter: `drop-shadow(0 0 3px ${color})` }}>
+        {/* tracer burst */}
+        {[[-1.6, -6], [0, -9], [1.6, -5]].map(([dx, dy], i) => (
+          <line key={i} x1={dx} y1={dy} x2={dx} y2={dy + 6} stroke="#fde68a" strokeWidth="1.1" opacity={0.9 - i * 0.2} strokeLinecap="round" />
+        ))}
+        <circle cx="0" cy="0" r="1.4" fill="#fff" />
+      </g>
+    );
+  }
+  // decoy / EW — pulsing cloud
+  return (
+    <g transform={`translate(${px} ${py})`}>
+      <circle cx="0" cy="0" r="5" fill="none" stroke={color} strokeWidth="0.8" className="animate-pulse-threat" opacity="0.8" />
+      <circle cx="0" cy="0" r="2" fill={color} opacity="0.7" />
+    </g>
+  );
+}
+
 export function TacticalRadar({
   contacts,
   selectedId,
