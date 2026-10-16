@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META } from "@/types/tactical";
 import { advanceContact, generateRandomContact } from "@/lib/simulator";
-import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem } from "@/lib/combatSystems";
+import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem, Shot } from "@/lib/combatSystems";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TacticalRadar } from "@/components/tactical/TacticalRadar";
 import { NauticalChart } from "@/components/tactical/NauticalChart";
@@ -55,6 +55,7 @@ const Index = () => {
   const [weapons, setWeapons] = useState<Weapon[]>(() => load("tcm.weapons", INITIAL_WEAPONS));
   const [ship, setShip] = useState<ShipSystem>(() => load("tcm.ship", INITIAL_SHIP));
   const [engageOpen, setEngageOpen] = useState(false);
+  const [shots, setShots] = useState<Shot[]>([]);
   const [engageContact, setEngageContact] = useState<Contact | null>(null);
   const [training, setTraining] = useState(false);
   const [autoDefense, setAutoDefense] = useState(false);
