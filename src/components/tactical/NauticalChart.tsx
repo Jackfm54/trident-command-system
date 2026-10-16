@@ -33,6 +33,38 @@ function destination(lat: number, lon: number, bearingDeg: number, distNm: numbe
   return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
 }
 
+// Realistic projectile glyph as an inline-SVG string for Leaflet divIcons.
+// Points "up" (0° = north); the caller rotates it along the flight path.
+function shotGlyphSvg(wtype: ShotInFlight["wtype"], color: string): string {
+  const flame = `<ellipse cx="0" cy="6.5" rx="1.6" ry="3.4" fill="url(#sgFlame)"><animate attributeName="ry" values="3.4;4.6;2.8;3.4" dur="0.3s" repeatCount="indefinite"/></ellipse>`;
+  const defs = `<defs><radialGradient id="sgFlame"><stop offset="0%" stop-color="#fff" stop-opacity="1"/><stop offset="45%" stop-color="#fde68a" stop-opacity="0.9"/><stop offset="100%" stop-color="#f97316" stop-opacity="0"/></radialGradient></defs>`;
+  let body = "";
+  if (wtype === "missile" || wtype === "rocket") {
+    body = `${flame}
+      <line x1="0" y1="6" x2="0" y2="18" stroke="${color}" stroke-width="1.6" opacity="0.35" stroke-linecap="round"/>
+      <rect x="-1.1" y="-8" width="2.2" height="13" rx="1" fill="${color}" stroke="#fff" stroke-width="0.3"/>
+      <path d="M -1.1 -8 L 0 -12 L 1.1 -8 Z" fill="${color}"/>
+      <path d="M -1.1 0 L -3.2 4 L -1.1 4 Z M 1.1 0 L 3.2 4 L 1.1 4 Z" fill="${color}" opacity="0.9"/>`;
+  } else if (wtype === "torpedo") {
+    body = `
+      <circle cx="-0.8" cy="9" r="0.9" fill="#e0f2fe" opacity="0.7"><animate attributeName="opacity" values="0.9;0" dur="1.2s" repeatCount="indefinite"/></circle>
+      <circle cx="0.8" cy="12" r="0.7" fill="#e0f2fe" opacity="0.5"><animate attributeName="opacity" values="0.7;0" dur="1.2s" begin="0.3s" repeatCount="indefinite"/></circle>
+      <circle cx="-0.8" cy="15" r="0.5" fill="#e0f2fe" opacity="0.4"><animate attributeName="opacity" values="0.6;0" dur="1.2s" begin="0.6s" repeatCount="indefinite"/></circle>
+      <rect x="-1.3" y="-9" width="2.6" height="15" rx="1.3" fill="${color}" stroke="#fff" stroke-width="0.3"/>
+      <path d="M -1.3 -9 A 1.3 1.3 0 0 1 1.3 -9 Z" fill="#e2e8f0"/>
+      <path d="M -1.3 3 L -2.8 6.5 L -1.3 6 Z M 1.3 3 L 2.8 6.5 L 1.3 6 Z" fill="${color}"/>`;
+  } else if (wtype === "gun" || wtype === "ciws") {
+    body = `
+      <line x1="-1.6" y1="-6" x2="-1.6" y2="0" stroke="#fde68a" stroke-width="1.1" opacity="0.9" stroke-linecap="round"/>
+      <line x1="0" y1="-9" x2="0" y2="-3" stroke="#fde68a" stroke-width="1.1" opacity="0.7" stroke-linecap="round"/>
+      <line x1="1.6" y1="-5" x2="1.6" y2="1" stroke="#fde68a" stroke-width="1.1" opacity="0.5" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="1.4" fill="#fff"/>`;
+  } else {
+    body = `<circle cx="0" cy="0" r="5" fill="none" stroke="${color}" stroke-width="0.8" opacity="0.8"><animate attributeName="r" values="3;6;3" dur="1.5s" repeatCount="indefinite"/></circle><circle cx="0" cy="0" r="2" fill="${color}" opacity="0.7"/>`;
+  }
+  return `<svg width="36" height="36" viewBox="-18 -18 36 36" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px ${color});overflow:visible;">${defs}${body}</svg>`;
+}
+
 const DOMAIN_HEX: Record<Domain, string> = {
   air: "#22d3ee",
   surface: "#facc15",
@@ -192,7 +224,8 @@ export function NauticalChart({
             const frac = Math.min(1, (Date.now() - s.firedAt) / s.tofMs);
             const ppos: [number, number] = [SHIP[0] + (tpos[0] - SHIP[0]) * frac, SHIP[1] + (tpos[1] - SHIP[1]) * frac];
             const color = DOMAIN_HEX[s.domain];
-            const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
+            // Flight direction for rotating the glyph (0° = north)
+            const angleDeg = (Math.atan2(tpos[1] - SHIP[1], tpos[0] - SHIP[0]) * 180) / Math.PI;
             // Wake/trail for the round in flight (same style as contact trails on the PPI)
             const smap = shotTrailsRef.current;
             const sarr = smap.get(s.id) ?? [];
@@ -221,9 +254,9 @@ export function NauticalChart({
                   position={ppos}
                   icon={L.divIcon({
                     className: "",
-                    html: `<div style="font-family:'JetBrains Mono',monospace;font-weight:bold;font-size:14px;color:${color};text-shadow:0 0 6px ${color},0 0 2px #000;line-height:1;">${symbol}</div>`,
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8],
+                    html: `<div style="transform:rotate(${angleDeg}deg);line-height:0;">${shotGlyphSvg(s.wtype, color)}</div>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18],
                   })}
                 >
                   <Tooltip permanent direction="right" offset={[8, 0]} opacity={0.9}>
