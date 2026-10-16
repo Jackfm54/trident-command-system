@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Contact, Domain, CLASSIFICATION_META } from "@/types/tactical";
+import { Contact, Domain, CLASSIFICATION_META, ShotInFlight } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2, Footprints } from "lucide-react";
@@ -15,6 +15,7 @@ interface Props {
   showWeaponRings?: boolean;
   onToggleWeaponRings?: () => void;
   ownName?: string;
+  shots?: ShotInFlight[];
 }
 
 const RANGE_PRESETS = [5, 10, 20, 40, 80, 160];
@@ -37,9 +38,18 @@ export function TacticalRadar({
   showWeaponRings = true,
   onToggleWeaponRings,
   ownName = "ARC ALM. PADILLA",
+  shots = [],
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [showTrails, setShowTrails] = useState(true);
+
+  // Smooth animation tick while friendly rounds are in flight
+  const shotsActive = shots.length > 0;
+  useEffect(() => {
+    if (!shotsActive) return;
+    const iv = setInterval(() => force((n) => n + 1), 80);
+    return () => clearInterval(iv);
+  }, [shotsActive]);
   const trailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
   const [, force] = useState(0);
 
