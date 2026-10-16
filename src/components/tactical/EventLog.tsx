@@ -1,4 +1,4 @@
-import { t, translateText, locale, useLanguage } from "@/lib/i18n";
+import { t as tr, translateText, locale, useLanguage } from "@/lib/i18n";
 import { TacticalEvent } from "@/types/tactical";
 import { Printer } from "lucide-react";
 
@@ -33,28 +33,28 @@ export function EventLog({ events, title = "SISTEMA TCM POSEIDÓN" }: Props) {
 
   return (
     <div className="hud-panel p-3 h-full flex flex-col">
-       {t("")} <div className="flex items-center justify-between mb-2">
-         {t("")} <span className="hud-label">{t("Bitácora Táctica")}</span>
-         {t("")} <div className="flex items-center gap-2">
-           {t("")} <button onClick={print} title={t("Imprimir bitácora")} className="flex items-center gap-1 text-[10px] font-mono uppercase text-accent hover:text-primary border border-border rounded px-2 py-0.5">
-             {t("")} <Printer className="w-3 h-3" />  {t("Imprimir")} </button>
-           {t("")} <span className="hud-label glow-cyan">{t("CIC LOG")}</span>
-         {t("")} </div>
-       {t("")} </div>
-       {t("")} <div className="overflow-y-auto flex-1 space-y-0.5 font-mono text-[11px]">
-         {t("")} {events.length === 0 && <div className="text-muted-foreground p-4 text-center">{t("Sin eventos.")}</div>}
-         {t("")} {events.map((e) => (
+       <div className="flex items-center justify-between mb-2">
+         <span className="hud-label">{tr("Bitácora Táctica")}</span>
+         <div className="flex items-center gap-2">
+           <button onClick={print} title={tr("Imprimir bitácora")} className="flex items-center gap-1 text-[10px] font-mono uppercase text-accent hover:text-primary border border-border rounded px-2 py-0.5">
+             <Printer className="w-3 h-3" />  {tr("Imprimir")} </button>
+           <span className="hud-label glow-cyan">{tr("CIC LOG")}</span>
+         </div>
+       </div>
+       <div className="overflow-y-auto flex-1 space-y-0.5 font-mono text-[11px]">
+         {events.length === 0 && <div className="text-muted-foreground p-4 text-center">{tr("Sin eventos.")}</div>}
+         {events.map((e) => (
           <div key={e.id} className="flex gap-2 border-b border-border/30 py-1">
-             {t("")} <span className="text-muted-foreground shrink-0">
-               {t("")} {new Date(e.created_at).toLocaleTimeString(locale(), { hour12: false })}
-             {t("")} </span>
-             {t("")} <span className={`shrink-0 uppercase text-[9px] mt-0.5 ${sevColor[e.severity] ?? "text-muted-foreground"}`}>
+             <span className="text-muted-foreground shrink-0">
+               {new Date(e.created_at).toLocaleTimeString(locale(), { hour12: false })}
+             </span>
+             <span className={`shrink-0 uppercase text-[9px] mt-0.5 ${sevColor[e.severity] ?? "text-muted-foreground"}`}>
               [{translateText(e.event_type)}]
             </span>
-             {t("")} <span className={`flex-1 ${sevColor[e.severity] ?? "text-foreground"}`}>{translateText(e.message)}</span>
-           {t("")} </div>
+             <span className={`flex-1 ${sevColor[e.severity] ?? "text-foreground"}`}>{translateText(e.message)}</span>
+           </div>
         ))}
-       {t("")} </div>
-     {t("")} </div>
+       </div>
+     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { t, translateText, locale, useLanguage } from "@/lib/i18n";
+import { t as tr, translateText, locale, useLanguage } from "@/lib/i18n";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -119,9 +119,9 @@ export function NauticalChart({
 
   return (
     <div className="space-y-2">
-       {t("")} <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
-         {t("")} <span className="hud-label">{t("CARTA NÁUTICA · COBERTURAS DE ARMAS")}</span>
-         {t("")} <button
+       <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
+         <span className="hud-label">{tr("CARTA NÁUTICA · COBERTURAS DE ARMAS")}</span>
+         <button
           onClick={() => setLocalShowRings((v) => !v)}
           className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded border ${
             showWeaponRings
@@ -129,24 +129,24 @@ export function NauticalChart({
               : "border-border text-muted-foreground hover:text-accent"
           }`}
         >
-           {t("Coberturas")} {showWeaponRings ? "ON" : "OFF"}
-         {t("")} </button>
-       {t("")} </div>
-       {t("")} <div className="hud-panel relative w-full max-w-[820px] mx-auto overflow-hidden" style={{ height: 600 }}>
-         {t("")} <MapContainer
+           {tr("Coberturas")} {showWeaponRings ? "ON" : "OFF"}
+         </button>
+       </div>
+       <div className="hud-panel relative w-full max-w-[820px] mx-auto overflow-hidden" style={{ height: 600 }}>
+         <MapContainer
           center={SHIP}
           zoom={6}
           style={{ height: "100%", width: "100%", background: "#021018" }}
           worldCopyJump
         >
-           {t("")} <TileLayer
+           <TileLayer
             attribution='© OpenStreetMap'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-           {t("")} <FitOnce contacts={filtered} weaponMaxNm={showWeaponRings ? weaponMaxNm : 0} />
+           <FitOnce contacts={filtered} weaponMaxNm={showWeaponRings ? weaponMaxNm : 0} />
 
-           {t("")} {/* Weapon coverage rings around ship */}
-           {t("")} {visibleWeapons.map((w) => (
+           {/* Weapon coverage rings around ship */}
+           {visibleWeapons.map((w) => (
             <Circle
               key={w.id}
               center={SHIP}
@@ -159,23 +159,23 @@ export function NauticalChart({
                 dashArray: w.type === "ciws" || w.type === "gun" ? "2 4" : w.type === "torpedo" ? "5 4" : "8 4",
               }}
             >
-               {t("")} <Tooltip permanent direction="top" offset={[0, -6]} opacity={0.85}>
-                 {t("")} <span style={{ color: DOMAIN_HEX[w.domain], fontFamily: "JetBrains Mono", fontSize: 10 }}>
-                   {t("")} {w.acronym}  {t("")} {w.range_nm}NM
+               <Tooltip permanent direction="top" offset={[0, -6]} opacity={0.85}>
+                 <span style={{ color: DOMAIN_HEX[w.domain], fontFamily: "JetBrains Mono", fontSize: 10 }}>
+                   {w.acronym}  {w.range_nm}NM
                 </span>
-               {t("")} </Tooltip>
-             {t("")} </Circle>
+               </Tooltip>
+             </Circle>
           ))}
 
-           {t("")} {/* Own ship */}
-           {t("")} <Marker position={SHIP} icon={ShipIcon()}>
-             {t("")} <Tooltip permanent direction="right" offset={[10, 0]}>
-               {t("")} <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#22c55e" }}>{ownName}</span>
-             {t("")} </Tooltip>
-           {t("")} </Marker>
+           {/* Own ship */}
+           <Marker position={SHIP} icon={ShipIcon()}>
+             <Tooltip permanent direction="right" offset={[10, 0]}>
+               <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#22c55e" }}>{ownName}</span>
+             </Tooltip>
+           </Marker>
 
-           {t("")} {/* Contacts */}
-           {t("")} {filtered.map((c) => {
+           {/* Contacts */}
+           {filtered.map((c) => {
             const pos = destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0);
             const meta = CLASSIFICATION_META[c.classification];
             const color = CLASS_HEX[c.classification] ?? "#94a3b8";
@@ -184,39 +184,39 @@ export function NauticalChart({
             const ahead = destination(pos[0], pos[1], c.heading ?? 0, (spd / 60) * 3);
             return (
               <Fragment key={c.id}>
-                 {t("")} <Marker
+                 <Marker
                   position={pos}
                   icon={ContactIcon(meta.symbol, color, c.classification === "hostile")}
                   eventHandlers={{ click: () => onSelect?.(c.id) }}
                 >
-                   {t("")} <Tooltip permanent direction="right" offset={[10, 0]} opacity={0.9}>
-                     {t("")} <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color, lineHeight: 1.2 }}>
-                       {t("")} <div style={{ fontWeight: "bold" }}>{c.track_id}</div>
-                       {t("")} <div>{String(Math.round(c.heading ?? 0)).padStart(3, "0")}° · {Math.round(spd)}kt</div>
-                       {t("")} <div>{(c.range_nm ?? 0).toFixed(1)}nm</div>
-                     {t("")} </div>
-                   {t("")} </Tooltip>
-                 {t("")} </Marker>
-                 {t("")} {spd > 0 && (
+                   <Tooltip permanent direction="right" offset={[10, 0]} opacity={0.9}>
+                     <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color, lineHeight: 1.2 }}>
+                       <div style={{ fontWeight: "bold" }}>{c.track_id}</div>
+                       <div>{String(Math.round(c.heading ?? 0)).padStart(3, "0")}° · {Math.round(spd)}kt</div>
+                       <div>{(c.range_nm ?? 0).toFixed(1)}nm</div>
+                     </div>
+                   </Tooltip>
+                 </Marker>
+                 {spd > 0 && (
                   <Polyline positions={[pos, ahead]} pathOptions={{ color, weight: 1.5, opacity: 0.85 }} />
                 )}
-                 {t("")} {c.id === selectedId && (
+                 {c.id === selectedId && (
                   <CircleMarker center={pos} radius={14} pathOptions={{ color, weight: 1.5, fill: false, opacity: 0.8 }} />
                 )}
-               {t("")} </Fragment>
+               </Fragment>
             );
           })}
-         {t("")} </MapContainer>
+         </MapContainer>
 
-         {t("")} <div className="absolute top-2 left-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded">
-           {t("CARTA NÁUTICA · WGS-84")} </div>
-         {t("")} <div className="absolute top-2 right-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded glow-cyan">
-           {t("")} {SHIP[0].toFixed(2)}°N · {Math.abs(SHIP[1]).toFixed(2)}°W
+         <div className="absolute top-2 left-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded">
+           {tr("CARTA NÁUTICA · WGS-84")} </div>
+         <div className="absolute top-2 right-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded glow-cyan">
+           {SHIP[0].toFixed(2)}°N · {Math.abs(SHIP[1]).toFixed(2)}°W
         </div>
-         {t("")} <div className="absolute bottom-2 left-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded">
-           {t("CONTACTS:")} <span className="hud-value text-primary">{filtered.length}</span>
-         {t("")} </div>
-       {t("")} </div>
-     {t("")} </div>
+         <div className="absolute bottom-2 left-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded">
+           {tr("CONTACTS:")} <span className="hud-value text-primary">{filtered.length}</span>
+         </div>
+       </div>
+     </div>
   );
 }
