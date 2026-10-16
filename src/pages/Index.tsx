@@ -1,7 +1,7 @@
 import logoAsset from "@/assets/poseidon.jpeg.asset.json";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META } from "@/types/tactical";
+import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META, Munition } from "@/types/tactical";
 import { advanceContact, generateRandomContact } from "@/lib/simulator";
 import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem } from "@/lib/combatSystems";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -60,6 +60,7 @@ const Index = () => {
   const [autoDefense, setAutoDefense] = useState(false);
   const [difficulty, setDifficulty] = useState(2);
   const [stats, setStats] = useState({ kills: 0, impacts: 0, waves: 0, shots: 0 });
+  const [munitions, setMunitions] = useState<Munition[]>([]);
   const { user, isInstructor, signOut } = useAuth();
   const [link, setLink] = useState<UnitLink | null>(() => load<UnitLink | null>("tcm.link", null));
   const [unit, setUnit] = useState<any>(null);
@@ -532,10 +533,21 @@ const Index = () => {
     }).then();
     if (!auto) toast.error(`${w.acronym} fired @ ${c.track_id}`);
 
+    // Munition in flight — animated on PPI and nautical chart until splash/miss
+    const tofMs = Math.min(4000, Math.max(800, tof * 100));
+    const munitionId = crypto.randomUUID();
+    setMunitions((ms) => [...ms, {
+      id: munitionId, acronym: w.acronym, weapon_type: w.type, domain: c.domain,
+      to_bearing: c.bearing ?? 0, to_range: c.range_nm ?? 0,
+      start_at: Date.now(), end_at: Date.now() + tofMs, outcome: "inflight",
+    }]);
+
     setTimeout(async () => {
       engagedRef.current.delete(c.id);
-      if (!contactsRef.current.some((x) => x.id === c.id)) return; // already impacted/destroyed
+      if (!contactsRef.current.some((x) => x.id === c.id)) { setMunitions((ms) => ms.filter((m) => m.id !== munitionId)); return; } // already impacted/destroyed
       const hit = Math.random() < w.pk;
+      setMunitions((ms) => ms.map((m) => (m.id === munitionId ? { ...m, outcome: hit ? "splash" : "miss" } : m)));
+      window.setTimeout(() => setMunitions((ms) => ms.filter((m) => m.id !== munitionId)), 1500);
       if (hit) {
         setContacts((cs) => cs.filter((x) => x.id !== c.id));
         setStats((s) => ({ ...s, kills: s.kills + 1 }));
@@ -565,7 +577,7 @@ const Index = () => {
         });
         toast.warning(`Miss ${c.track_id} · reattack`);
       }
-    }, Math.min(4000, Math.max(800, tof * 100)));
+    }, tofMs);
   };
 
   const endTraining = (lost = false) => {
