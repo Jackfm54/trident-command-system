@@ -1,5 +1,15 @@
+import { t as tr, useLanguage } from "@/lib/i18n";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Circle, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Circle,
+  Polyline,
+  CircleMarker,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Contact, CLASSIFICATION_META, Domain } from "@/types/tactical";
@@ -19,16 +29,27 @@ interface Props {
 const SHIP: [number, number] = [10.55, -75.85];
 
 // Convert bearing+range from ship to lat/lon (great-circle approx)
-function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {
+function destination(
+  lat: number,
+  lon: number,
+  bearingDeg: number,
+  distNm: number,
+): [number, number] {
   const R = 3440.065; // nm
   const br = (bearingDeg * Math.PI) / 180;
   const lat1 = (lat * Math.PI) / 180;
   const lon1 = (lon * Math.PI) / 180;
   const dr = distNm / R;
-  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(dr) + Math.cos(lat1) * Math.sin(dr) * Math.cos(br));
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(dr) +
+      Math.cos(lat1) * Math.sin(dr) * Math.cos(br),
+  );
   const lon2 =
     lon1 +
-    Math.atan2(Math.sin(br) * Math.sin(dr) * Math.cos(lat1), Math.cos(dr) - Math.sin(lat1) * Math.sin(lat2));
+    Math.atan2(
+      Math.sin(br) * Math.sin(dr) * Math.cos(lat1),
+      Math.cos(dr) - Math.sin(lat1) * Math.sin(lat2),
+    );
   return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
 }
 
@@ -66,16 +87,26 @@ function ContactIcon(symbol: string, color: string, hostile: boolean) {
   });
 }
 
-function FitOnce({ contacts, weaponMaxNm }: { contacts: Contact[]; weaponMaxNm: number }) {
+function FitOnce({
+  contacts,
+  weaponMaxNm,
+}: {
+  contacts: Contact[];
+  weaponMaxNm: number;
+}) {
   const map = useMap();
   const did = useRef(false);
   useEffect(() => {
     if (did.current) return;
     const pts: [number, number][] = [SHIP];
-    contacts.forEach((c) => pts.push(destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0)));
+    contacts.forEach((c) =>
+      pts.push(destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0)),
+    );
     // Include weapon coverage so user sees the rings on first load
     if (weaponMaxNm > 0) {
-      [0, 90, 180, 270].forEach((b) => pts.push(destination(SHIP[0], SHIP[1], b, weaponMaxNm)));
+      [0, 90, 180, 270].forEach((b) =>
+        pts.push(destination(SHIP[0], SHIP[1], b, weaponMaxNm)),
+      );
     }
     if (pts.length < 2) return;
     const b = L.latLngBounds(pts);
@@ -94,12 +125,20 @@ export function NauticalChart({
   showWeaponRings: showWeaponRingsProp = true,
   ownName = "ARC ALM. PADILLA",
 }: Props) {
+  useLanguage();
   const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
   const showWeaponRings = localShowRings;
 
   const filtered = useMemo(
-    () => contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain || c.status === "fleet" || c.status === "sunk"),
-    [contacts, filterDomain]
+    () =>
+      contacts.filter(
+        (c) =>
+          filterDomain === "all" ||
+          c.domain === filterDomain ||
+          c.status === "fleet" ||
+          c.status === "sunk",
+      ),
+    [contacts, filterDomain],
   );
 
   const visibleWeapons = (weapons ?? []).filter(
@@ -107,18 +146,23 @@ export function NauticalChart({
       showWeaponRings &&
       w.type !== "decoy" &&
       w.ammo > 0 &&
-      (filterDomain === "all" || w.domain === filterDomain)
+      (filterDomain === "all" || w.domain === filterDomain),
   );
 
   const weaponMaxNm = useMemo(
-    () => (weapons ?? []).filter((w) => w.type !== "decoy" && w.ammo > 0).reduce((m, w) => Math.max(m, w.range_nm), 0),
-    [weapons]
+    () =>
+      (weapons ?? [])
+        .filter((w) => w.type !== "decoy" && w.ammo > 0)
+        .reduce((m, w) => Math.max(m, w.range_nm), 0),
+    [weapons],
   );
 
   return (
     <div className="space-y-2">
       <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2">
-        <span className="hud-label">CARTA NÁUTICA · COBERTURAS DE ARMAS</span>
+        <span className="hud-label">
+          {tr("CARTA NÁUTICA · COBERTURAS DE ARMAS")}
+        </span>
         <button
           onClick={() => setLocalShowRings((v) => !v)}
           className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded border ${
@@ -127,10 +171,13 @@ export function NauticalChart({
               : "border-border text-muted-foreground hover:text-accent"
           }`}
         >
-          Coberturas {showWeaponRings ? "ON" : "OFF"}
+          {tr("Coberturas")} {showWeaponRings ? "ON" : "OFF"}
         </button>
       </div>
-      <div className="hud-panel relative w-full max-w-[820px] mx-auto overflow-hidden" style={{ height: 600 }}>
+      <div
+        className="hud-panel relative w-full max-w-[820px] mx-auto overflow-hidden"
+        style={{ height: 600 }}
+      >
         <MapContainer
           center={SHIP}
           zoom={6}
@@ -138,10 +185,13 @@ export function NauticalChart({
           worldCopyJump
         >
           <TileLayer
-            attribution='© OpenStreetMap'
+            attribution="© OpenStreetMap"
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <FitOnce contacts={filtered} weaponMaxNm={showWeaponRings ? weaponMaxNm : 0} />
+          <FitOnce
+            contacts={filtered}
+            weaponMaxNm={showWeaponRings ? weaponMaxNm : 0}
+          />
 
           {/* Weapon coverage rings around ship */}
           {visibleWeapons.map((w) => (
@@ -154,11 +204,27 @@ export function NauticalChart({
                 weight: 0.8,
                 opacity: 0.55,
                 fill: false,
-                dashArray: w.type === "ciws" || w.type === "gun" ? "2 4" : w.type === "torpedo" ? "5 4" : "8 4",
+                dashArray:
+                  w.type === "ciws" || w.type === "gun"
+                    ? "2 4"
+                    : w.type === "torpedo"
+                      ? "5 4"
+                      : "8 4",
               }}
             >
-              <Tooltip permanent direction="top" offset={[0, -6]} opacity={0.85}>
-                <span style={{ color: DOMAIN_HEX[w.domain], fontFamily: "JetBrains Mono", fontSize: 10 }}>
+              <Tooltip
+                permanent
+                direction="top"
+                offset={[0, -6]}
+                opacity={0.85}
+              >
+                <span
+                  style={{
+                    color: DOMAIN_HEX[w.domain],
+                    fontFamily: "JetBrains Mono",
+                    fontSize: 10,
+                  }}
+                >
                   {w.acronym} {w.range_nm}NM
                 </span>
               </Tooltip>
@@ -168,38 +234,87 @@ export function NauticalChart({
           {/* Own ship */}
           <Marker position={SHIP} icon={ShipIcon()}>
             <Tooltip permanent direction="right" offset={[10, 0]}>
-              <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#22c55e" }}>{ownName}</span>
+              <span
+                style={{
+                  fontFamily: "JetBrains Mono",
+                  fontSize: 10,
+                  color: "#22c55e",
+                }}
+              >
+                {ownName}
+              </span>
             </Tooltip>
           </Marker>
 
           {/* Contacts */}
           {filtered.map((c) => {
-            const pos = destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0);
+            const pos = destination(
+              SHIP[0],
+              SHIP[1],
+              c.bearing ?? 0,
+              c.range_nm ?? 0,
+            );
             const meta = CLASSIFICATION_META[c.classification];
             const color = CLASS_HEX[c.classification] ?? "#94a3b8";
             const spd = c.speed_kts ?? 0;
             // velocity vector — project 3 minutes ahead
-            const ahead = destination(pos[0], pos[1], c.heading ?? 0, (spd / 60) * 3);
+            const ahead = destination(
+              pos[0],
+              pos[1],
+              c.heading ?? 0,
+              (spd / 60) * 3,
+            );
             return (
               <Fragment key={c.id}>
                 <Marker
                   position={pos}
-                  icon={ContactIcon(meta.symbol, color, c.classification === "hostile")}
+                  icon={ContactIcon(
+                    meta.symbol,
+                    color,
+                    c.classification === "hostile",
+                  )}
                   eventHandlers={{ click: () => onSelect?.(c.id) }}
                 >
-                  <Tooltip permanent direction="right" offset={[10, 0]} opacity={0.9}>
-                    <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color, lineHeight: 1.2 }}>
+                  <Tooltip
+                    permanent
+                    direction="right"
+                    offset={[10, 0]}
+                    opacity={0.9}
+                  >
+                    <div
+                      style={{
+                        fontFamily: "JetBrains Mono",
+                        fontSize: 10,
+                        color,
+                        lineHeight: 1.2,
+                      }}
+                    >
                       <div style={{ fontWeight: "bold" }}>{c.track_id}</div>
-                      <div>{String(Math.round(c.heading ?? 0)).padStart(3, "0")}° · {Math.round(spd)}kt</div>
+                      <div>
+                        {String(Math.round(c.heading ?? 0)).padStart(3, "0")}° ·{" "}
+                        {Math.round(spd)}kt
+                      </div>
                       <div>{(c.range_nm ?? 0).toFixed(1)}nm</div>
                     </div>
                   </Tooltip>
                 </Marker>
                 {spd > 0 && (
-                  <Polyline positions={[pos, ahead]} pathOptions={{ color, weight: 1.5, opacity: 0.85 }} />
+                  <Polyline
+                    positions={[pos, ahead]}
+                    pathOptions={{ color, weight: 1.5, opacity: 0.85 }}
+                  />
                 )}
                 {c.id === selectedId && (
-                  <CircleMarker center={pos} radius={14} pathOptions={{ color, weight: 1.5, fill: false, opacity: 0.8 }} />
+                  <CircleMarker
+                    center={pos}
+                    radius={14}
+                    pathOptions={{
+                      color,
+                      weight: 1.5,
+                      fill: false,
+                      opacity: 0.8,
+                    }}
+                  />
                 )}
               </Fragment>
             );
@@ -207,13 +322,14 @@ export function NauticalChart({
         </MapContainer>
 
         <div className="absolute top-2 left-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded">
-          CARTA NÁUTICA · WGS-84
+          {tr("CARTA NÁUTICA · WGS-84")}{" "}
         </div>
         <div className="absolute top-2 right-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded glow-cyan">
           {SHIP[0].toFixed(2)}°N · {Math.abs(SHIP[1]).toFixed(2)}°W
         </div>
         <div className="absolute bottom-2 left-3 hud-label z-[1000] bg-background/70 px-2 py-0.5 rounded">
-          CONTACTS: <span className="hud-value text-primary">{filtered.length}</span>
+          {tr("CONTACTS:")}{" "}
+          <span className="hud-value text-primary">{filtered.length}</span>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { t as tr, translateText, useLanguage } from "@/lib/i18n";
 import { Contact, Domain, DOMAIN_META } from "@/types/tactical";
 
 interface Props {
@@ -5,6 +6,7 @@ interface Props {
 }
 
 export function DomainStatus({ contacts }: Props) {
+  useLanguage();
   const counts: Record<Domain, { total: number; hostile: number }> = {
     air: { total: 0, hostile: 0 },
     surface: { total: 0, hostile: 0 },
@@ -29,14 +31,29 @@ export function DomainStatus({ contacts }: Props) {
             style={{ borderColor: `hsl(var(--${meta.color}) / 0.5)` }}
           >
             <div className="flex items-center justify-between">
-              <span className="hud-label" style={{ color: `hsl(var(--${meta.color}))` }}>{meta.abbr}</span>
-              {alert && <span className="text-destructive text-[10px] font-mono animate-blink-alert">⚠ ALERT</span>}
+              <span
+                className="hud-label"
+                style={{ color: `hsl(var(--${meta.color}))` }}
+              >
+                {meta.abbr}
+              </span>
+              {alert && (
+                <span className="text-destructive text-[10px] font-mono animate-blink-alert">
+                  {tr("⚠ ALERT")}
+                </span>
+              )}
             </div>
-            <div className="font-display text-2xl" style={{ color: `hsl(var(--${meta.color}))` }}>
+            <div
+              className="font-display text-2xl"
+              style={{ color: `hsl(var(--${meta.color}))` }}
+            >
               {c.total.toString().padStart(2, "0")}
             </div>
             <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              {meta.label} · <span className="text-destructive">{c.hostile} hostil</span>
+              {translateText(meta.label)} ·{" "}
+              <span className="text-destructive">
+                {c.hostile} {tr("hostil")}
+              </span>
             </div>
           </div>
         );
