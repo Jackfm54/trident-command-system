@@ -51,6 +51,7 @@ export function TacticalRadar({
     return () => clearInterval(iv);
   }, [shotsActive]);
   const trailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
+  const shotTrailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
   const [, force] = useState(0);
 
   const filtered = contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain || c.status === "fleet" || c.status === "sunk");
@@ -289,10 +290,33 @@ export function TacticalRadar({
             const color = `hsl(${WEAPON_RING_COLOR[s.domain]})`;
             const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
             const fsz = s.wtype === "gun" || s.wtype === "ciws" ? 10 : 12;
+            // Wake/trail for the round in flight (same style as contact trails)
+            const smap = shotTrailsRef.current;
+            const sarr = smap.get(s.id) ?? [];
+            const slast = sarr[sarr.length - 1];
+            if (!slast || Math.hypot(slast.x - px, slast.y - py) > 0.5) {
+              sarr.push({ x: px, y: py, t: Date.now() });
+              while (sarr.length > 25) sarr.shift();
+              smap.set(s.id, sarr);
+            }
+            Array.from(smap.keys()).forEach((k) => { if (!shots.some((sh) => sh.id === k)) smap.delete(k); });
+            const strail = sarr.length >= 2 ? sarr : null;
             return (
               <g key={s.id}>
                 {/* fire vector from own ship to round */}
                 <line x1="200" y1="200" x2={px} y2={py} stroke={color} strokeWidth="1" strokeDasharray="3 2" opacity="0.6" />
+                {/* wake trail */}
+                {showTrails && strail && (
+                  <g opacity="0.7">
+                    <path
+                      d={strail.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ")}
+                      fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="2 2" opacity="0.55"
+                    />
+                    {strail.slice(-6).map((p, i) => (
+                      <circle key={i} cx={p.x} cy={p.y} r={0.8 + i * 0.25} fill={color} opacity={0.15 + i * 0.12} />
+                    ))}
+                  </g>
+                )}
                 <text
                   x={px} y={py}
                   fill={color}
