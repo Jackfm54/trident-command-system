@@ -439,6 +439,7 @@ const Index = () => {
     if (!activeScenario) return;
     await supabase.from("contacts").delete().eq("scenario_id", activeScenario);
     setActiveScenario(null);
+    setMunitions([]);
     toast.info("Simulación detenida");
   };
 
@@ -588,6 +589,7 @@ const Index = () => {
     const ids = trainees.map((c) => c.id);
     contactsRef.current = contactsRef.current.filter((c) => !ids.includes(c.id));
     setContacts(contactsRef.current);
+    setMunitions([]);
     if (ids.length) supabase.from("contacts").delete().in("id", ids).then();
     if (activeScenario) {
       supabase.from("tactical_events").insert({
@@ -862,6 +864,7 @@ const Index = () => {
                             weapons={weapons}
                             showWeaponRings={showWeaponRings}
                             onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
+                            munitions={munitions}
                           />
                         ) : (
                           <NauticalChart
@@ -872,6 +875,7 @@ const Index = () => {
                             onSelect={setSelectedId}
                             weapons={weapons}
                             showWeaponRings={showWeaponRings}
+                            munitions={munitions}
                           />
                         )}
                       </div>
