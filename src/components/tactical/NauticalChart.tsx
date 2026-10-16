@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Contact, CLASSIFICATION_META, Domain } from "@/types/tactical";
+import { Contact, CLASSIFICATION_META, Domain, ShotInFlight } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   weapons?: Weapon[];
   showWeaponRings?: boolean;
   ownName?: string;
+  shots?: ShotInFlight[];
 }
 
 // Own ship anchored off Cartagena, Colombia
@@ -93,8 +94,18 @@ export function NauticalChart({
   weapons = [],
   showWeaponRings: showWeaponRingsProp = true,
   ownName = "ARC ALM. PADILLA",
+  shots = [],
 }: Props) {
   const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
+
+  // Smooth animation tick while friendly rounds are in flight
+  const [, setTick] = useState(0);
+  const shotsActive = shots.length > 0;
+  useEffect(() => {
+    if (!shotsActive) return;
+    const iv = setInterval(() => setTick((n) => n + 1), 80);
+    return () => clearInterval(iv);
+  }, [shotsActive]);
   const showWeaponRings = localShowRings;
 
   const filtered = useMemo(
