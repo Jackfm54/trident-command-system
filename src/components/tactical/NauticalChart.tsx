@@ -183,6 +183,35 @@ export function NauticalChart({
             </Tooltip>
           </Marker>
 
+          {/* Friendly rounds in flight (own weapons) */}
+          {shots.map((s) => {
+            const target = filtered.find((c) => c.id === s.targetId);
+            if (!target) return null;
+            const tpos = destination(SHIP[0], SHIP[1], target.bearing ?? 0, target.range_nm ?? 0);
+            const frac = Math.min(1, (Date.now() - s.firedAt) / s.tofMs);
+            const ppos: [number, number] = [SHIP[0] + (tpos[0] - SHIP[0]) * frac, SHIP[1] + (tpos[1] - SHIP[1]) * frac];
+            const color = DOMAIN_HEX[s.domain];
+            const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
+            return (
+              <Fragment key={s.id}>
+                <Polyline positions={[SHIP, ppos]} pathOptions={{ color, weight: 1.5, opacity: 0.6, dashArray: "4 3" }} />
+                <Marker
+                  position={ppos}
+                  icon={L.divIcon({
+                    className: "",
+                    html: `<div style="font-family:'JetBrains Mono',monospace;font-weight:bold;font-size:14px;color:${color};text-shadow:0 0 6px ${color},0 0 2px #000;line-height:1;">${symbol}</div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8],
+                  })}
+                >
+                  <Tooltip permanent direction="right" offset={[8, 0]} opacity={0.9}>
+                    <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color }}>{s.acronym}</span>
+                  </Tooltip>
+                </Marker>
+              </Fragment>
+            );
+          })}
+
           {/* Contacts */}
           {filtered.map((c) => {
             const pos = destination(SHIP[0], SHIP[1], c.bearing ?? 0, c.range_nm ?? 0);
