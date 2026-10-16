@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Contact, CLASSIFICATION_META, Domain, ShotInFlight } from "@/types/tactical";
+import { Contact, CLASSIFICATION_META, Domain } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
 
 interface Props {
@@ -13,7 +13,6 @@ interface Props {
   weapons?: Weapon[];
   showWeaponRings?: boolean;
   ownName?: string;
-  shots?: ShotInFlight[];
 }
 
 // Own ship anchored off Cartagena, Colombia
@@ -94,19 +93,8 @@ export function NauticalChart({
   weapons = [],
   showWeaponRings: showWeaponRingsProp = true,
   ownName = "ARC ALM. PADILLA",
-  shots = [],
 }: Props) {
   const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
-  const shotTrailsRef = useRef<Map<string, [number, number][]>>(new Map());
-
-  // Smooth animation tick while friendly rounds are in flight
-  const [, setTick] = useState(0);
-  const shotsActive = shots.length > 0;
-  useEffect(() => {
-    if (!shotsActive) return;
-    const iv = setInterval(() => setTick((n) => n + 1), 80);
-    return () => clearInterval(iv);
-  }, [shotsActive]);
   const showWeaponRings = localShowRings;
 
   const filtered = useMemo(
@@ -183,56 +171,6 @@ export function NauticalChart({
               <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#22c55e" }}>{ownName}</span>
             </Tooltip>
           </Marker>
-
-          {/* Friendly rounds in flight (own weapons) */}
-          {shots.map((s) => {
-            const target = filtered.find((c) => c.id === s.targetId);
-            if (!target) return null;
-            const tpos = destination(SHIP[0], SHIP[1], target.bearing ?? 0, target.range_nm ?? 0);
-            const frac = Math.min(1, (Date.now() - s.firedAt) / s.tofMs);
-            const ppos: [number, number] = [SHIP[0] + (tpos[0] - SHIP[0]) * frac, SHIP[1] + (tpos[1] - SHIP[1]) * frac];
-            const color = DOMAIN_HEX[s.domain];
-            const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
-            // Wake/trail for the round in flight (same style as contact trails on the PPI)
-            const smap = shotTrailsRef.current;
-            const sarr = smap.get(s.id) ?? [];
-            const slast = sarr[sarr.length - 1];
-            if (!slast || Math.abs(slast[0] - ppos[0]) + Math.abs(slast[1] - ppos[1]) > 1e-6) {
-              sarr.push(ppos);
-              while (sarr.length > 25) sarr.shift();
-              smap.set(s.id, sarr);
-            }
-            Array.from(smap.keys()).forEach((k) => { if (!shots.some((sh) => sh.id === k)) smap.delete(k); });
-            return (
-              <Fragment key={s.id}>
-                <Polyline positions={[SHIP, ppos]} pathOptions={{ color, weight: 1.5, opacity: 0.6, dashArray: "4 3" }} />
-                {sarr.length >= 2 && (
-                  <Polyline positions={sarr} pathOptions={{ color, weight: 1, opacity: 0.55, dashArray: "2 3" }} />
-                )}
-                {sarr.slice(-6).map((p, i) => (
-                  <CircleMarker
-                    key={i}
-                    center={p}
-                    radius={1.5 + i * 0.6}
-                    pathOptions={{ color, weight: 0, fillColor: color, fillOpacity: 0.15 + i * 0.12 }}
-                  />
-                ))}
-                <Marker
-                  position={ppos}
-                  icon={L.divIcon({
-                    className: "",
-                    html: `<div style="font-family:'JetBrains Mono',monospace;font-weight:bold;font-size:14px;color:${color};text-shadow:0 0 6px ${color},0 0 2px #000;line-height:1;">${symbol}</div>`,
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8],
-                  })}
-                >
-                  <Tooltip permanent direction="right" offset={[8, 0]} opacity={0.9}>
-                    <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color }}>{s.acronym}</span>
-                  </Tooltip>
-                </Marker>
-              </Fragment>
-            );
-          })}
 
           {/* Contacts */}
           {filtered.map((c) => {

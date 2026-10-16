@@ -1,7 +1,7 @@
 import logoAsset from "@/assets/poseidon.jpeg.asset.json";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META, ShotInFlight } from "@/types/tactical";
+import { Contact, Scenario, TacticalEvent, Domain, DOMAIN_META } from "@/types/tactical";
 import { advanceContact, generateRandomContact } from "@/lib/simulator";
 import { INITIAL_SENSORS, INITIAL_WEAPONS, INITIAL_SHIP, Sensor, Weapon, ShipSystem } from "@/lib/combatSystems";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -55,7 +55,6 @@ const Index = () => {
   const [weapons, setWeapons] = useState<Weapon[]>(() => load("tcm.weapons", INITIAL_WEAPONS));
   const [ship, setShip] = useState<ShipSystem>(() => load("tcm.ship", INITIAL_SHIP));
   const [engageOpen, setEngageOpen] = useState(false);
-  const [shots, setShots] = useState<ShotInFlight[]>([]);
   const [engageContact, setEngageContact] = useState<Contact | null>(null);
   const [training, setTraining] = useState(false);
   const [autoDefense, setAutoDefense] = useState(false);
@@ -523,9 +522,6 @@ const Index = () => {
     engagedRef.current.add(c.id);
     supabase.from("contacts").update({ status: "engaged" }).eq("id", c.id).then();
     const tof = ((c.range_nm ?? 0) / Math.max(1, w.speed_kts)) * 3600;
-    const shotId = `shot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const tofMs = Math.min(4000, Math.max(800, tof * 100));
-    setShots((ss) => [...ss, { id: shotId, targetId: c.id, trackId: c.track_id, acronym: w.acronym, domain: w.domain, wtype: w.type, firedAt: Date.now(), tofMs }]);
     supabase.from("tactical_events").insert({
       scenario_id: c.scenario_id,
       contact_id: c.id,
@@ -537,7 +533,6 @@ const Index = () => {
     if (!auto) toast.error(`${w.acronym} fired @ ${c.track_id}`);
 
     setTimeout(async () => {
-      setShots((ss) => ss.filter((x) => x.id !== shotId));
       engagedRef.current.delete(c.id);
       if (!contactsRef.current.some((x) => x.id === c.id)) return; // already impacted/destroyed
       const hit = Math.random() < w.pk;
@@ -577,7 +572,6 @@ const Index = () => {
     setTraining(false);
     setAutoDefense(false);
     autoRef.current = false;
-    setShots([]);
     const trainees = contactsRef.current.filter((c) => (c.ai_reasoning ?? "").startsWith("ENTRENAMIENTO"));
     const ids = trainees.map((c) => c.id);
     contactsRef.current = contactsRef.current.filter((c) => !ids.includes(c.id));
@@ -856,7 +850,6 @@ const Index = () => {
                             weapons={weapons}
                             showWeaponRings={showWeaponRings}
                             onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
-                            shots={shots}
                           />
                         ) : (
                           <NauticalChart
@@ -867,7 +860,6 @@ const Index = () => {
                             onSelect={setSelectedId}
                             weapons={weapons}
                             showWeaponRings={showWeaponRings}
-                            shots={shots}
                           />
                         )}
                       </div>

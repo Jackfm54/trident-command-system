@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Contact, Domain, CLASSIFICATION_META, ShotInFlight } from "@/types/tactical";
+import { Contact, Domain, CLASSIFICATION_META } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2, Footprints } from "lucide-react";
@@ -15,7 +15,6 @@ interface Props {
   showWeaponRings?: boolean;
   onToggleWeaponRings?: () => void;
   ownName?: string;
-  shots?: ShotInFlight[];
 }
 
 const RANGE_PRESETS = [5, 10, 20, 40, 80, 160];
@@ -38,20 +37,10 @@ export function TacticalRadar({
   showWeaponRings = true,
   onToggleWeaponRings,
   ownName = "ARC ALM. PADILLA",
-  shots = [],
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [showTrails, setShowTrails] = useState(true);
-
-  // Smooth animation tick while friendly rounds are in flight
-  const shotsActive = shots.length > 0;
-  useEffect(() => {
-    if (!shotsActive) return;
-    const iv = setInterval(() => force((n) => n + 1), 80);
-    return () => clearInterval(iv);
-  }, [shotsActive]);
   const trailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
-  const shotTrailsRef = useRef<Map<string, { x: number; y: number; t: number }[]>>(new Map());
   const [, force] = useState(0);
 
   const filtered = contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain || c.status === "fleet" || c.status === "sunk");
@@ -272,73 +261,6 @@ export function TacticalRadar({
                 {trail.slice(-6).map((p, i) => (
                   <circle key={i} cx={p.x} cy={p.y} r={0.8 + i * 0.25} fill={color} opacity={0.15 + i * 0.12} />
                 ))}
-              </g>
-            );
-          })}
-
-          {/* Friendly rounds in flight (own weapons) */}
-          {shots.map((s) => {
-            const target = filtered.find((c) => c.id === s.targetId);
-            if (!target) return null;
-            const cr = Math.min((target.range_nm ?? 0) * scale, 195);
-            const a = ((target.bearing ?? 0) * Math.PI) / 180;
-            const tx = 200 + cr * Math.sin(a);
-            const ty = 200 - cr * Math.cos(a);
-            const frac = Math.min(1, (Date.now() - s.firedAt) / s.tofMs);
-            const px = 200 + (tx - 200) * frac;
-            const py = 200 + (ty - 200) * frac;
-            const color = `hsl(${WEAPON_RING_COLOR[s.domain]})`;
-            const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
-            const fsz = s.wtype === "gun" || s.wtype === "ciws" ? 10 : 12;
-            // Wake/trail for the round in flight (same style as contact trails)
-            const smap = shotTrailsRef.current;
-            const sarr = smap.get(s.id) ?? [];
-            const slast = sarr[sarr.length - 1];
-            if (!slast || Math.hypot(slast.x - px, slast.y - py) > 0.5) {
-              sarr.push({ x: px, y: py, t: Date.now() });
-              while (sarr.length > 25) sarr.shift();
-              smap.set(s.id, sarr);
-            }
-            Array.from(smap.keys()).forEach((k) => { if (!shots.some((sh) => sh.id === k)) smap.delete(k); });
-            const strail = sarr.length >= 2 ? sarr : null;
-            return (
-              <g key={s.id}>
-                {/* fire vector from own ship to round */}
-                <line x1="200" y1="200" x2={px} y2={py} stroke={color} strokeWidth="1" strokeDasharray="3 2" opacity="0.6" />
-                {/* wake trail */}
-                {showTrails && strail && (
-                  <g opacity="0.7">
-                    <path
-                      d={strail.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ")}
-                      fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="2 2" opacity="0.55"
-                    />
-                    {strail.slice(-6).map((p, i) => (
-                      <circle key={i} cx={p.x} cy={p.y} r={0.8 + i * 0.25} fill={color} opacity={0.15 + i * 0.12} />
-                    ))}
-                  </g>
-                )}
-                <text
-                  x={px} y={py}
-                  fill={color}
-                  fontSize={fsz}
-                  fontFamily="JetBrains Mono"
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  style={{ filter: `drop-shadow(0 0 4px ${color})` }}
-                >
-                  {symbol}
-                </text>
-                <text
-                  x={px} y={py - 9}
-                  fill={color}
-                  fontSize="6.5"
-                  fontFamily="JetBrains Mono"
-                  textAnchor="middle"
-                  style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 1.8 }}
-                >
-                  {s.acronym}
-                </text>
               </g>
             );
           })}

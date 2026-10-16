@@ -21,18 +21,6 @@ export interface Contact {
   updated_at: string;
 }
 
-/** A friendly round in flight from own ship toward a target contact. */
-export interface ShotInFlight {
-  id: string;
-  targetId: string;
-  trackId: string;
-  acronym: string;
-  domain: Domain;
-  wtype: "missile" | "gun" | "torpedo" | "ciws" | "decoy" | "ew" | "rocket";
-  firedAt: number; // Date.now()
-  tofMs: number;   // visual flight time, matches impact resolution
-}
-
 export interface Scenario {
   id: string;
   name: string;
