@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Contact, CLASSIFICATION_META, Domain, Munition } from "@/types/tactical";
+import { Contact, CLASSIFICATION_META, Domain } from "@/types/tactical";
 import { Weapon } from "@/lib/combatSystems";
 
 interface Props {
@@ -13,7 +13,6 @@ interface Props {
   weapons?: Weapon[];
   showWeaponRings?: boolean;
   ownName?: string;
-  munitions?: Munition[];
 }
 
 // Own ship anchored off Cartagena, Colombia
@@ -94,18 +93,9 @@ export function NauticalChart({
   weapons = [],
   showWeaponRings: showWeaponRingsProp = true,
   ownName = "ARC ALM. PADILLA",
-  munitions = [],
 }: Props) {
   const [localShowRings, setLocalShowRings] = useState(showWeaponRingsProp);
   const showWeaponRings = localShowRings;
-  const [, setTick] = useState(0);
-
-  // Animate munitions in flight
-  useEffect(() => {
-    if (!munitions.length) return;
-    const id = window.setInterval(() => setTick((n) => n + 1), 100);
-    return () => window.clearInterval(id);
-  }, [munitions.length]);
 
   const filtered = useMemo(
     () => contacts.filter((c) => filterDomain === "all" || c.domain === filterDomain || c.status === "fleet" || c.status === "sunk"),
@@ -181,46 +171,6 @@ export function NauticalChart({
               <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#22c55e" }}>{ownName}</span>
             </Tooltip>
           </Marker>
-
-          {/* Munitions in flight */}
-          {munitions.map((m) => {
-            const now2 = Date.now();
-            const total = Math.max(1, m.end_at - m.start_at);
-            const p = Math.min(1, (now2 - m.start_at) / total);
-            const color = DOMAIN_HEX[m.domain];
-            const pos = destination(SHIP[0], SHIP[1], m.to_bearing, m.to_range * p);
-            const tpos = destination(SHIP[0], SHIP[1], m.to_bearing, m.to_range);
-            if (m.outcome !== "inflight") {
-              const q = Math.min(1, (now2 - m.end_at) / 1500);
-              const splash = m.outcome === "splash";
-              return (
-                <CircleMarker
-                  key={m.id}
-                  center={tpos}
-                  radius={splash ? 6 + q * 16 : 6}
-                  pathOptions={{ color, weight: splash ? Math.max(0.5, 2 - q * 2) : 1.5, fill: splash, fillOpacity: splash ? 0.3 * (1 - q) : 0, opacity: 1 - q }}
-                >
-                  <Tooltip permanent direction="top" offset={[0, -8]} opacity={0.9}>
-                    <span style={{ fontFamily: "JetBrains Mono", fontSize: 9, fontWeight: "bold", color }}>{splash ? "SPLASH" : "MISS"}</span>
-                  </Tooltip>
-                </CircleMarker>
-              );
-            }
-            const gun = m.weapon_type === "gun" || m.weapon_type === "ciws";
-            return (
-              <Fragment key={m.id}>
-                <Polyline
-                  positions={[SHIP, pos]}
-                  pathOptions={{ color, weight: 1.5, opacity: 0.5, dashArray: m.weapon_type === "torpedo" ? "4 4" : gun ? "1 6" : m.weapon_type === "decoy" || m.weapon_type === "ew" ? "3 3" : undefined }}
-                />
-                <CircleMarker center={pos} radius={m.weapon_type === "missile" ? 4 : 3} pathOptions={{ color, fillColor: color, fillOpacity: 0.9, weight: 1 }}>
-                  <Tooltip permanent direction="right" offset={[6, 0]} opacity={0.9}>
-                    <span style={{ fontFamily: "JetBrains Mono", fontSize: 9, color }}>{m.acronym}</span>
-                  </Tooltip>
-                </CircleMarker>
-              </Fragment>
-            );
-          })}
 
           {/* Contacts */}
           {filtered.map((c) => {
