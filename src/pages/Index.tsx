@@ -523,6 +523,14 @@ const Index = () => {
     engagedRef.current.add(c.id);
     supabase.from("contacts").update({ status: "engaged" }).eq("id", c.id).then();
     const tof = ((c.range_nm ?? 0) / Math.max(1, w.speed_kts)) * 3600;
+    const flightMs = Math.min(4000, Math.max(800, tof * 100));
+    const shotId = `shot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setShots((s) => [...s, {
+      id: shotId, acronym: w.acronym, domain: w.domain, type: w.type,
+      contactId: c.id, trackId: c.track_id,
+      bearing: c.bearing ?? 0, range_nm: c.range_nm ?? 0,
+      start: Date.now(), duration: flightMs,
+    }]);
     supabase.from("tactical_events").insert({
       scenario_id: c.scenario_id,
       contact_id: c.id,
