@@ -50,6 +50,7 @@ export default function Master() {
   const [exId, setExId] = useState<string | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
   const [toDelete, setToDelete] = useState<Unit | null>(null);
+  const [toDeleteScn, setToDeleteScn] = useState<Scn | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<Scn[]>([]);
