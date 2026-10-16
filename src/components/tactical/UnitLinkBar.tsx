@@ -69,7 +69,7 @@ export function UnitLinkBar({ userId, link, unitName, exerciseName, onLink }: Pr
     <>
        {link ? (
         <div className="flex items-center gap-2">
-           <span className="text-accent">{exerciseName} · {unitName} · {STATIONS.find((s) => s.key === link.station)?.label.split(" ·")[0]}</span>
+           <span className="text-accent">{exerciseName} · {unitName} · {tr(STATIONS.find((s) => s.key === link.station)?.label.split(" ·")[0] ?? "")}</span>
            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={leave}><Unlink className="w-3 h-3 mr-1" />{tr("Salir")}</Button>
          </div>
       ) : (
@@ -90,7 +90,7 @@ export function UnitLinkBar({ userId, link, unitName, exerciseName, onLink }: Pr
                  {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                </select>
                <select className={sel} value={station} onChange={(e) => setStation(e.target.value)}>
-                 {STATIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                 {STATIONS.map((s) => <option key={s.key} value={s.key}>{tr(s.label)}</option>)}
                </select>
                <p className="text-[10px] font-mono text-muted-foreground">{tr("Cada buque necesita un puesto de Mando: es el que mueve la simulación. Los demás puestos ven el mismo buque y disparan las armas de su guerra.")}</p>
                <Button className="w-full font-mono" onClick={join}>{tr("Enlazar consola")}</Button>

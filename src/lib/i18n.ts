@@ -56,3 +56,27 @@ export function translateText(source: string): string {
   }
   return source;
 }
+
+/** Translate standalone print documents too; never alter scripts, names or styles. */
+export function localizePrintHTML(html: string): string {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.documentElement.lang = language;
+  const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node) {
+    if (!node.parentElement?.closest("script, style")) {
+      const original = node.textContent ?? "";
+      node.textContent = original.split(" · ").map((part) => {
+        const trimmed = part.trim();
+        let translated = translateText(trimmed);
+        for (const label of ["Ejercicio:", "Buques:", "Impreso:"]) {
+          if (trimmed.startsWith(label)) translated = t(label) + trimmed.slice(label.length);
+        }
+        translated = translated.replace(/(\d+) eventos$/, "$1 " + t("eventos"));
+        return part.replace(trimmed, translated);
+      }).join(" · ");
+    }
+    node = walker.nextNode();
+  }
+  return "<!doctype html>" + doc.documentElement.outerHTML;
+}

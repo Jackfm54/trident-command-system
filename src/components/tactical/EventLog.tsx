@@ -1,4 +1,4 @@
-import { t as tr, translateText, locale, useLanguage } from "@/lib/i18n";
+import { t as tr, translateText, locale, useLanguage, localizePrintHTML } from "@/lib/i18n";
 import { TacticalEvent } from "@/types/tactical";
 import { Printer } from "lucide-react";
 
@@ -10,7 +10,7 @@ const sevColor: Record<string, string> = {
   critical: "text-destructive",
 };
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] ?? c));
 
 export function EventLog({ events, title = "SISTEMA TCM POSEIDÓN" }: Props) {
   useLanguage();
@@ -18,7 +18,7 @@ export function EventLog({ events, title = "SISTEMA TCM POSEIDÓN" }: Props) {
     const w = window.open("", "_blank");
     if (!w) return;
     const rows = [...events].reverse().map((e) => `<tr class="${e.severity}"><td>${new Date(e.created_at).toLocaleString(locale(), { hour12: false })}</td><td>${esc(e.domain ?? "")}</td><td>${esc(e.event_type)}</td><td>${esc(e.severity)}</td><td>${esc(e.message)}</td></tr>`).join("");
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bitácora Táctica</title><style>
+    w.document.write(localizePrintHTML(`<!doctype html><html><head><meta charset="utf-8"><title>Bitácora Táctica</title><style>
       body{font-family:monospace;font-size:11px;margin:16px;color:#111}
       h1{font-size:16px;margin:0}p{margin:2px 0 12px;color:#555}
       table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px;text-align:left;vertical-align:top}
@@ -27,7 +27,7 @@ export function EventLog({ events, title = "SISTEMA TCM POSEIDÓN" }: Props) {
     </style></head><body><h1>${esc(title)} · BITÁCORA TÁCTICA (CIC LOG)</h1>
     <p>Impreso: ${new Date().toLocaleString(locale(), { hour12: false })} · ${events.length} eventos</p>
     <table><thead><tr><th>Hora</th><th>Dominio</th><th>Tipo</th><th>Severidad</th><th>Mensaje</th></tr></thead><tbody>${rows || '<tr><td colspan="5">Sin eventos</td></tr>'}</tbody></table>
-    <script>window.onload=()=>{window.print()}</script></body></html>`);
+    <script>window.onload=()=>{window.print()}</script></body></html>`));
     w.document.close();
   };
 
