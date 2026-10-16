@@ -172,33 +172,6 @@
 }
 
 @keyframes radar-sweep {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes flame-flicker {
-  0% { transform: scaleY(1) scaleX(1); opacity: 0.95; }
-  30% { transform: scaleY(1.35) scaleX(0.85); opacity: 1; }
-  60% { transform: scaleY(0.8) scaleX(1.1); opacity: 0.8; }
-  100% { transform: scaleY(1.2) scaleX(0.9); opacity: 0.95; }
-}
-
-@keyframes wake-bubble {
-  0% { opacity: 0.9; }
-  100% { opacity: 0; }
-}
-
-.animate-flame {
-  animation: flame-flicker 0.25s ease-in-out infinite alternate;
-  transform-box: fill-box;
-  transform-origin: top center;
-}
-
-.animate-bubble {
-  animation: wake-bubble 1.2s linear infinite;
-}
-
-@keyframes radar-sweep {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
