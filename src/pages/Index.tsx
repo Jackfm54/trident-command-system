@@ -858,6 +858,7 @@ const Index = () => {
                             rangeNm={radarRange}
                             onRangeChange={setRadarRange}
                             weapons={weapons}
+                            shots={shots}
                             showWeaponRings={showWeaponRings}
                             onToggleWeaponRings={() => setShowWeaponRings((v) => !v)}
                           />
@@ -869,6 +870,7 @@ const Index = () => {
                             selectedId={selectedId}
                             onSelect={setSelectedId}
                             weapons={weapons}
+                            shots={shots}
                             showWeaponRings={showWeaponRings}
                           />
                         )}
