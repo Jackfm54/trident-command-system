@@ -349,8 +349,8 @@ export function TacticalRadar({
             const px = 200 + (tx - 200) * frac;
             const py = 200 + (ty - 200) * frac;
             const color = `hsl(${WEAPON_RING_COLOR[s.domain]})`;
-            const symbol = s.wtype === "torpedo" ? "◆" : s.wtype === "gun" || s.wtype === "ciws" ? "•" : "▲";
-            const fsz = s.wtype === "gun" || s.wtype === "ciws" ? 10 : 12;
+            // Flight direction: 0° = north, matches the "up"-pointing glyph
+            const angleDeg = (Math.atan2(tx - 200, -(ty - 200)) * 180) / Math.PI;
             // Wake/trail for the round in flight (same style as contact trails)
             const smap = shotTrailsRef.current;
             const sarr = smap.get(s.id) ?? [];
@@ -378,18 +378,7 @@ export function TacticalRadar({
                     ))}
                   </g>
                 )}
-                <text
-                  x={px} y={py}
-                  fill={color}
-                  fontSize={fsz}
-                  fontFamily="JetBrains Mono"
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  style={{ filter: `drop-shadow(0 0 4px ${color})` }}
-                >
-                  {symbol}
-                </text>
+                <ShotGlyph wtype={s.wtype} color={color} angleDeg={angleDeg} px={px} py={py} />
                 <text
                   x={px} y={py - 9}
                   fill={color}
