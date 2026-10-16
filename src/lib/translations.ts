@@ -1410,5 +1410,321 @@ export const translations: Record<string, { en: string; fr: string }> = {
   "Mensaje": {
     "en": "Message",
     "fr": "Message"
+  },
+  "No se pudo unir al buque: {0}": {
+    "en": "Could not join ship: {0}",
+    "fr": "Impossible de rejoindre le navire : {0}"
+  },
+  "Enlazado al buque · puesto {0}": {
+    "en": "Linked to ship · station {0}",
+    "fr": "Lié au navire · poste {0}"
+  },
+  "El buque ya no existe en el ejercicio": {
+    "en": "The ship no longer exists in the exercise",
+    "fr": "Le navire n’existe plus dans l’exercice"
+  },
+  "El instructor retiró este buque": {
+    "en": "The instructor removed this ship",
+    "fr": "L’instructeur a retiré ce navire"
+  },
+  "📡 El instructor inició el ejercicio": {
+    "en": "📡 The instructor started the exercise",
+    "fr": "📡 L’instructeur a démarré l’exercice"
+  },
+  "🏁 El instructor finalizó el ejercicio": {
+    "en": "🏁 The instructor ended the exercise",
+    "fr": "🏁 L’instructeur a terminé l’exercice"
+  },
+  "🚨 RAID ordenado por el instructor": {
+    "en": "🚨 RAID ordered by instructor",
+    "fr": "🚨 RAID ordonné par l’instructeur"
+  },
+  "☠ BUQUE PERDIDO · fin del ejercicio. Pulse 'Reabastecer y reparar' para reiniciar.": {
+    "en": "☠ SHIP LOST · exercise ended. Press 'Resupply and repair' to restart.",
+    "fr": "☠ NAVIRE PERDU · exercice terminé. Appuyez sur « Réapprovisionner et réparer » pour redémarrer."
+  },
+  "💥 IMPACTO · {0} ({1}) −{2}% casco": {
+    "en": "💥 IMPACT · {0} ({1}) −{2}% hull",
+    "fr": "💥 IMPACT · {0} ({1}) −{2}% coque"
+  },
+  "💥 IMPACTO EN PROPIA UNIDAD · {0} ({1}) · daño {2}%": {
+    "en": "💥 OWN SHIP IMPACT · {0} ({1}) · damage {2}%",
+    "fr": "💥 IMPACT SUR NAVIRE PROPRE · {0} ({1}) · dégâts {2}%"
+  },
+  "🚨 RAID INBOUND · {0} amenaza(s): {1}": {
+    "en": "🚨 INBOUND RAID · {0} threat(s): {1}",
+    "fr": "🚨 RAID EN APPROCHE · {0} menace(s) : {1}"
+  },
+  "🚨 Raid inbound · {0} amenaza(s)": {
+    "en": "🚨 Inbound raid · {0} threat(s)",
+    "fr": "🚨 Raid en approche · {0} menace(s)"
+  },
+  "Escenario activado: {0}": {
+    "en": "Scenario activated: {0}",
+    "fr": "Scénario activé : {0}"
+  },
+  "Escenario \"{0}\" activado": {
+    "en": "Scenario \"{0}\" activated",
+    "fr": "Scénario « {0} » activé"
+  },
+  "Simulación detenida": {
+    "en": "Simulation stopped",
+    "fr": "Simulation arrêtée"
+  },
+  "Nuevo contacto detectado {0} ({1})": {
+    "en": "New contact detected {0} ({1})",
+    "fr": "Nouveau contact détecté {0} ({1})"
+  },
+  "Sin resultado IA": {
+    "en": "No AI result",
+    "fr": "Aucun résultat IA"
+  },
+  "IA clasifica {0} → {1} ({2}). {3}": {
+    "en": "AI classifies {0} → {1} ({2}). {3}",
+    "fr": "L’IA classifie {0} → {1} ({2}). {3}"
+  },
+  "Error de clasificación IA": {
+    "en": "AI classification error",
+    "fr": "Erreur de classification IA"
+  },
+  "Buque perdido · sistemas de armas inoperativos": {
+    "en": "Ship lost · weapon systems inoperative",
+    "fr": "Navire perdu · systèmes d’armes inopérants"
+  },
+  "Unidad propia de la flota · fuego bloqueado": {
+    "en": "Friendly fleet unit · firing blocked",
+    "fr": "Unité amie de la flotte · tir bloqué"
+  },
+  "{0} sin munición": {
+    "en": "{0} out of ammunition",
+    "fr": "{0} sans munitions"
+  },
+  "{0} fired @ {1}": {
+    "en": "{0} fired @ {1}",
+    "fr": "{0} tiré sur {1}"
+  },
+  "💥 SPLASH · {0} destruido por {1}": {
+    "en": "💥 SPLASH · {0} destroyed by {1}",
+    "fr": "💥 SPLASH · {0} détruit par {1}"
+  },
+  "Splash {0}": {
+    "en": "Splash {0}",
+    "fr": "Destruction {0}"
+  },
+  "⚠ MISS · {0} falló contra {1}": {
+    "en": "⚠ MISS · {0} missed {1}",
+    "fr": "⚠ ÉCHEC · {0} a manqué {1}"
+  },
+  "Miss {0} · reattack": {
+    "en": "Miss {0} · reattack",
+    "fr": "Échec {0} · réengager"
+  },
+  "☠ EJERCICIO FINALIZADO · BUQUE PERDIDO": {
+    "en": "☠ EXERCISE ENDED · SHIP LOST",
+    "fr": "☠ EXERCICE TERMINÉ · NAVIRE PERDU"
+  },
+  "Ejercicio de entrenamiento detenido · amenazas retiradas": {
+    "en": "Training exercise stopped · threats removed",
+    "fr": "Exercice d’entraînement arrêté · menaces retirées"
+  },
+  "Entrenamiento detenido · amenazas retiradas": {
+    "en": "Training stopped · threats removed",
+    "fr": "Entraînement arrêté · menaces retirées"
+  },
+  "Pañoles reabastecidos · daños reparados": {
+    "en": "Magazines resupplied · damage repaired",
+    "fr": "Soutes réapprovisionnées · dégâts réparés"
+  },
+  "Su puesto solo controla las armas de su guerra": {
+    "en": "Your station only controls its warfare-area weapons",
+    "fr": "Votre poste contrôle uniquement les armes de son domaine"
+  },
+  "Track {0} en SHADOW · seguimiento prioritario": {
+    "en": "Track {0} in SHADOW · priority tracking",
+    "fr": "Piste {0} en SUIVI · suivi prioritaire"
+  },
+  "Track {0} fuera de SHADOW": {
+    "en": "Track {0} out of SHADOW",
+    "fr": "Piste {0} hors suivi prioritaire"
+  },
+  "{0} en SHADOW": {
+    "en": "{0} in SHADOW",
+    "fr": "{0} en suivi prioritaire"
+  },
+  "{0} liberado": {
+    "en": "{0} released",
+    "fr": "{0} libéré"
+  },
+  "JAM solo aplica a emisores aéreos/electrónicos": {
+    "en": "JAM applies only to air/electronic emitters",
+    "fr": "Le brouillage s’applique uniquement aux émetteurs aériens/électroniques"
+  },
+  "EW activa jamming sobre {0} · degradando guidance": {
+    "en": "EW jamming activated on {0} · degrading guidance",
+    "fr": "Brouillage GE activé sur {0} · guidage dégradé"
+  },
+  "Jamming activo sobre {0}": {
+    "en": "Jamming active on {0}",
+    "fr": "Brouillage actif sur {0}"
+  },
+  "No hay contactos sin clasificar": {
+    "en": "No unclassified contacts",
+    "fr": "Aucun contact non classifié"
+  },
+  "Clasificando {0} contactos...": {
+    "en": "Classifying {0} contacts...",
+    "fr": "Classification de {0} contacts..."
+  },
+  "{0} reparado · en servicio": {
+    "en": "{0} repaired · online",
+    "fr": "{0} réparé · en service"
+  },
+  "Condición {0} ordenada para todo el buque": {
+    "en": "Condition {0} ordered for entire ship",
+    "fr": "Condition {0} ordonnée pour tout le navire"
+  },
+  "BATTLE STATIONS · CONDICIÓN {0}": {
+    "en": "BATTLE STATIONS · CONDITION {0}",
+    "fr": "POSTES DE COMBAT · CONDITION {0}"
+  },
+  "Condición de alerta {0}": {
+    "en": "Alert condition {0}",
+    "fr": "Condition d’alerte {0}"
+  },
+  "Unidad propia de la flota · casco {0}%": {
+    "en": "Friendly fleet unit · hull {0}%",
+    "fr": "Unité amie de la flotte · coque {0}%"
+  },
+  "En ejercicio integrado los ataques los lanza el instructor": {
+    "en": "In integrated exercises, the instructor launches attacks",
+    "fr": "Dans un exercice intégré, l’instructeur lance les attaques"
+  },
+  "Buque perdido · pulse 'Reabastecer y reparar' primero": {
+    "en": "Ship lost · press 'Resupply and repair' first",
+    "fr": "Navire perdu · appuyez d’abord sur « Réapprovisionner et réparer »"
+  },
+  "⚠ ENTRENAMIENTO · Amenazas inbound": {
+    "en": "⚠ TRAINING · Inbound threats",
+    "fr": "⚠ ENTRAÎNEMENT · Menaces en approche"
+  },
+  "{0} actualizado por Visual ID": {
+    "en": "{0} updated by Visual ID",
+    "fr": "{0} mis à jour par identification visuelle"
+  },
+  "Seleccione un contacto antes de disparar": {
+    "en": "Select a contact before firing",
+    "fr": "Sélectionnez un contact avant de tirer"
+  },
+  "{0} no aplica a dominio {1}": {
+    "en": "{0} does not apply to domain {1}",
+    "fr": "{0} ne s’applique pas au domaine {1}"
+  },
+  "{0} fuera de alcance ({1} > {2} NM)": {
+    "en": "{0} out of range ({1} > {2} NM)",
+    "fr": "{0} hors de portée ({1} > {2} NM)"
+  },
+  "Ejercicio creado": {
+    "en": "Exercise created",
+    "fr": "Exercice créé"
+  },
+  "Escriba el nombre del buque": {
+    "en": "Enter the ship name",
+    "fr": "Saisissez le nom du navire"
+  },
+  "Buque {0} posicionado a {1} NM / {2}°": {
+    "en": "Ship {0} positioned at {1} NM / {2}°",
+    "fr": "Navire {0} positionné à {1} NM / {2}°"
+  },
+  "Buque {0} añadido": {
+    "en": "Ship {0} added",
+    "fr": "Navire {0} ajouté"
+  },
+  "Buque {0} eliminado": {
+    "en": "Ship {0} deleted",
+    "fr": "Navire {0} supprimé"
+  },
+  "Escenario {0} eliminado": {
+    "en": "Scenario {0} deleted",
+    "fr": "Scénario {0} supprimé"
+  },
+  "Ejercicio iniciado": {
+    "en": "Exercise started",
+    "fr": "Exercice démarré"
+  },
+  "Ejercicio finalizado": {
+    "en": "Exercise ended",
+    "fr": "Exercice terminé"
+  },
+  "No hay buques a flote para atacar": {
+    "en": "No afloat ships to attack",
+    "fr": "Aucun navire à flot à attaquer"
+  },
+  "🚨 RAID DEL INSTRUCTOR · {0}× {1} contra {2}": {
+    "en": "🚨 INSTRUCTOR RAID · {0}× {1} against {2}",
+    "fr": "🚨 RAID DE L’INSTRUCTEUR · {0}× {1} contre {2}"
+  },
+  "Raid lanzado contra {0} buque(s)": {
+    "en": "Raid launched against {0} ship(s)",
+    "fr": "Raid lancé contre {0} navire(s)"
+  },
+  "🚨 RAID DEL INSTRUCTOR · {0}× {1} inbound": {
+    "en": "🚨 INSTRUCTOR RAID · {0}× {1} inbound",
+    "fr": "🚨 RAID DE L’INSTRUCTEUR · {0}× {1} en approche"
+  },
+  "Orden de reparación enviada a {0}": {
+    "en": "Repair order sent to {0}",
+    "fr": "Ordre de réparation envoyé à {0}"
+  },
+  "Agregue al menos un contacto": {
+    "en": "Add at least one contact",
+    "fr": "Ajoutez au moins un contact"
+  },
+  "Escenario guardado": {
+    "en": "Scenario saved",
+    "fr": "Scénario enregistré"
+  },
+  "Añada buques primero": {
+    "en": "Add ships first",
+    "fr": "Ajoutez d’abord des navires"
+  },
+  "Formación aplicada · {0} como guía": {
+    "en": "Formation applied · {0} as guide",
+    "fr": "Formation appliquée · {0} comme guide"
+  },
+  "Teatro común sembrado: {0} · {1} contactos": {
+    "en": "Shared theatre populated: {0} · {1} contacts",
+    "fr": "Théâtre commun peuplé : {0} · {1} contacts"
+  },
+  "aleatorio": {
+    "en": "random",
+    "fr": "aléatoire"
+  },
+  "Teatro común con {0} contactos": {
+    "en": "Shared theatre with {0} contacts",
+    "fr": "Théâtre commun avec {0} contacts"
+  },
+  "💥 IMPACTO en {0} · {1} ({2}) · daño {3}%": {
+    "en": "💥 IMPACT on {0} · {1} ({2}) · damage {3}%",
+    "fr": "💥 IMPACT sur {0} · {1} ({2}) · dégâts {3}%"
+  },
+  "Enlace {0} de {1} copiado": {
+    "en": "{0} link for {1} copied",
+    "fr": "Lien {0} de {1} copié"
+  },
+  "Copie el enlace:": {
+    "en": "Copy the link:",
+    "fr": "Copiez le lien :"
+  },
+  "Ocupado por {0}": {
+    "en": "Occupied by {0}",
+    "fr": "Occupé par {0}"
+  },
+  "Visual ID · {0} detecciones · {1}": {
+    "en": "Visual ID · {0} detections · {1}",
+    "fr": "ID visuelle · {0} détections · {1}"
+  },
+  "ENTRENAMIENTO · Amenaza inbound con rumbo de colisión hacia propia unidad.": {
+    "en": "TRAINING · Inbound threat on collision course with own ship.",
+    "fr": "ENTRAÎNEMENT · Menace en approche sur trajectoire de collision avec le navire propre."
   }
 };
